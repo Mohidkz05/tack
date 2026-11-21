@@ -21,13 +21,13 @@
 
 - 2026-11-21: Phase 3: Claude Code plugin + marketplace (validated), CI matrix (3 OS x 3 Python, all green after a Windows UTF-8 fix), upstream watch, Dependabot, release workflow, README/docs. Released v0.1.0.
 
+- 2026-11-21: v0.1.1 on PyPI (`pip install tack-harness`) via trusted publishing; action versions bumped everywhere (Dependabot PR #1 superseded and auto-closed); template/workflow version sync test added.
+
 ## Current work
 
 Nothing in progress.
 
 ## Next
 
-1. Merge Dependabot's actions PR, then bump the same action versions in the add-on templates (`src/tack/templates/addons/`), which Dependabot doesn't see. Consider a test that keeps them in sync with `.github/workflows/`.
-2. Optional: publish to PyPI (add trusted publisher on pypi.org, set repo variable PUBLISH_TO_PYPI=true).
-3. Optional: add an ANTHROPIC_API_KEY secret so the upstream watch can open fix PRs by itself.
-4. Later (see docs/PLAN.md): parallel tasks in separate worktrees, add-on catalog, more agent adapters, run-log viewer.
+1. Optional: add an ANTHROPIC_API_KEY secret so the upstream watch can open fix PRs by itself.
+2. Later (see docs/PLAN.md): parallel tasks in separate worktrees, add-on catalog, more agent adapters, run-log viewer.
