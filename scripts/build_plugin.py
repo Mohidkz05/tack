@@ -56,13 +56,15 @@ def plugin_files() -> dict[str, str]:
     )
 
     for src in sorted((TEMPLATES / "skills").glob("*/SKILL.md")):
-        files[f"skills/{src.parent.name}/SKILL.md"] = src.read_text().replace(LOCAL, PLUGIN)
+        files[f"skills/{src.parent.name}/SKILL.md"] = src.read_text(encoding="utf-8").replace(
+            LOCAL, PLUGIN
+        )
     for src in sorted(p for p in PLUGIN_ONLY.rglob("*") if p.is_file()):
-        files[src.relative_to(PLUGIN_ONLY).as_posix()] = src.read_text()
+        files[src.relative_to(PLUGIN_ONLY).as_posix()] = src.read_text(encoding="utf-8")
     for src in sorted((TEMPLATES / "agents").glob("*.md")):
-        files[f"agents/{src.name}"] = src.read_text().replace(LOCAL, PLUGIN)
+        files[f"agents/{src.name}"] = src.read_text(encoding="utf-8").replace(LOCAL, PLUGIN)
 
-    settings = json.loads((TEMPLATES / "settings.json").read_text())
+    settings = json.loads((TEMPLATES / "settings.json").read_text(encoding="utf-8"))
     hooks = json.loads(json.dumps(settings["hooks"]))
     for groups in hooks.values():
         for group in groups:
@@ -70,7 +72,7 @@ def plugin_files() -> dict[str, str]:
                 name = h["command"].rsplit(" hook ", 1)[1]
                 h["command"] = f"{PLUGIN} hook {name} --plugin"
     files["hooks/hooks.json"] = json.dumps({"hooks": hooks}, indent=2) + "\n"
-    files["hooks/tack"] = Path(runtime.__file__).read_text()
+    files["hooks/tack"] = Path(runtime.__file__).read_text(encoding="utf-8")
     return files
 
 
@@ -80,7 +82,11 @@ def main() -> int:
     args = parser.parse_args()
     wanted = plugin_files()
     existing = (
-        {p.relative_to(OUT).as_posix(): p.read_text() for p in OUT.rglob("*") if p.is_file()}
+        {
+            p.relative_to(OUT).as_posix(): p.read_text(encoding="utf-8")
+            for p in OUT.rglob("*")
+            if p.is_file()
+        }
         if OUT.exists()
         else {}
     )
@@ -99,7 +105,7 @@ def main() -> int:
     for rel, content in wanted.items():
         target = OUT / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content)
+        target.write_text(content, encoding="utf-8")
     print(f"wrote {len(wanted)} files to {OUT.relative_to(ROOT)}/")
     return 0
 
