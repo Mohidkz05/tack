@@ -236,6 +236,13 @@ def test_cache_path_for_remote_sources(isolated_home: Path) -> None:
     assert path.name == "Mohidkz05-playbook"
 
 
+def test_cache_names_stay_short_for_long_urls() -> None:
+    long_url = "file:///" + "/".join(["very-long-directory-name"] * 12) + "/pb"
+    name = runtime.playbook_path(long_url).name
+    assert len(name) < 60 and name.endswith(name[-8:]) and "pb" in name
+    assert runtime.playbook_path(long_url) != runtime.playbook_path(long_url + "2")
+
+
 def test_sync_clones_then_pulls(tmp_path: Path) -> None:
     upstream = make_playbook(tmp_path)
     for args in (

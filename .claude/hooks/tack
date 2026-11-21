@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import hashlib
 import json
 import os
 import re
@@ -721,8 +722,13 @@ def playbook_path(source: str) -> Path:
     """Where a playbook source lives on disk (cache dir for remote sources)."""
     if not is_remote(source):
         return Path(source).expanduser().resolve()
-    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", re.sub(r"^(github:|[a-z+]+://|git@)", "", source))
-    return playbook_cache_root() / slug.strip("-").removesuffix(".git")
+    if source.startswith("github:"):
+        slug = source[7:].replace("/", "-")
+    else:  # short, stable name: last two URL segments plus a hash (Windows path limits)
+        tail_parts = re.split(r"[/:]+", source.rstrip("/").removesuffix(".git"))[-2:]
+        digest = hashlib.sha1(source.encode("utf-8")).hexdigest()[:8]
+        slug = "-".join([*tail_parts, digest])
+    return playbook_cache_root() / re.sub(r"[^A-Za-z0-9._-]+", "-", slug).strip("-")
 
 
 def find_playbook(m: Manifest | None) -> Path | None:
