@@ -58,15 +58,34 @@ def render(text: str, context: dict[str, str]) -> str:
     return text
 
 
-def plan(context: dict[str, str], seeds: tuple[str, ...] = ("PROGRESS.md",)) -> list[Planned]:
-    files: list[Planned] = []
-    core = TEMPLATES / "core"
-    for src in sorted(p for p in core.rglob("*") if p.is_file()):
-        dest = _dest(src.relative_to(core))
+def available_addons() -> list[str]:
+    return sorted(p.name for p in (TEMPLATES / "addons").iterdir() if p.is_dir())
+
+
+def _plan_dir(base: Path, context: dict[str, str]) -> list[Planned]:
+    files = []
+    for src in sorted(p for p in base.rglob("*") if p.is_file()):
+        dest = _dest(src.relative_to(base))
         kind = "block" if dest in BLOCK_FILES else "merge" if dest in MERGE_FILES else "managed"
         files.append(Planned(dest, render(src.read_text(encoding="utf-8"), context), kind))
+    return files
+
+
+def plan(
+    context: dict[str, str],
+    seeds: tuple[str, ...] = ("PROGRESS.md",),
+    addons: tuple[str, ...] = (),
+) -> list[Planned]:
+    files = _plan_dir(TEMPLATES / "core", context)
     runtime_src = Path(runtime.__file__).read_text(encoding="utf-8")
     files.append(Planned(".claude/hooks/tack_runtime.py", runtime_src, "managed"))
+    for addon in addons:
+        base = TEMPLATES / "addons" / addon
+        if not base.is_dir():
+            raise ValueError(
+                f"unknown add-on '{addon}' (available: {', '.join(available_addons())})"
+            )
+        files += _plan_dir(base, context)
     seed_dir = TEMPLATES / "seed"
     for src in sorted(seed_dir.glob("*.tmpl")):
         dest = _dest(src.relative_to(seed_dir))
@@ -75,8 +94,44 @@ def plan(context: dict[str, str], seeds: tuple[str, ...] = ("PROGRESS.md",)) -> 
     return files
 
 
+# GitHub Actions toolchain setup per stack. Indented to sit under `steps:`.
+_STEP = "      "
+CI_SETUP = {
+    "uv": f"{_STEP}- uses: astral-sh/setup-uv@v6",
+    "node": f'{_STEP}- uses: actions/setup-node@v5\n{_STEP}  with:\n{_STEP}    node-version: "22"',
+    "pnpm": f"{_STEP}- uses: pnpm/action-setup@v4\n{_STEP}  with:\n{_STEP}    version: latest",
+    "bun": f"{_STEP}- uses: oven-sh/setup-bun@v2",
+    "go": f"{_STEP}- uses: actions/setup-go@v6\n{_STEP}  with:\n{_STEP}    go-version: stable",
+    "rust": f"{_STEP}- uses: dtolnay/rust-toolchain@stable\n{_STEP}  with:\n"
+    f"{_STEP}    components: rustfmt, clippy",
+    "java": f"{_STEP}- uses: actions/setup-java@v5\n{_STEP}  with:\n"
+    f'{_STEP}    distribution: temurin\n{_STEP}    java-version: "21"',
+}
+
+
+def ci_setup_steps(components: list[runtime.Component]) -> str:
+    """Toolchain setup steps for exactly the stacks this project uses."""
+    needed: list[str] = []
+    for c in components:
+        cmds = " ".join(c.commands.values())
+        keys = {
+            "python": ["uv"] if "uv " in cmds else [],
+            "node": (["pnpm"] if "pnpm" in cmds else ["bun"] if "bun" in cmds else []) + ["node"],
+            "go": ["go"],
+            "rust": ["rust"],
+            "java": ["java"],
+        }.get(c.stack, [])
+        needed += [k for k in keys if k not in needed]
+    return "\n".join(CI_SETUP[k] for k in needed)
+
+
 def context_for(root: Path, name: str | None = None) -> dict[str, str]:
-    return {"name": name or root.resolve().name, "date": _dt.date.today().isoformat()}
+    ctx = {"name": name or root.resolve().name, "date": _dt.date.today().isoformat()}
+    try:
+        ctx["setup_steps"] = ci_setup_steps(runtime.load_manifest(root).components)
+    except (FileNotFoundError, OSError, ValueError):
+        ctx["setup_steps"] = ""
+    return ctx
 
 
 # --------------------------------------------------------------------------- lock

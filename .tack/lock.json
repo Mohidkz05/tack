@@ -3,7 +3,7 @@
     ".claude/agents/reviewer.md": "fba888b8635befb7f0fe95e489224eab6d2d39de9c55dca53799d6eed6ad64af",
     ".claude/agents/security-reviewer.md": "ce612eb6c512dcc409e6b9dac8615e145f65226b667fe13f2aff11dab8a3a3e8",
     ".claude/agents/test-writer.md": "b0622d8955041739ebb389e9d2ecb45e0c45a288009f5b33dfc494fbf2ebad99",
-    ".claude/hooks/tack_runtime.py": "ad8eff7e18fcf4675c994e4ea7dc6f2f1e85d3180b82843923de5a5fa6648dcb",
+    ".claude/hooks/tack_runtime.py": "de92d0bbba0b68c591628f736d72174b77b861a62c12f4ff218e342471e32652",
     ".claude/skills/bootstrap/SKILL.md": "d2b37646422b0d0d19cedaef24ca65aefa8a5b14f4bbbca6798fdcc77de7b1ff",
     ".claude/skills/build/SKILL.md": "88f7f73f6d170736b5d88bdaddbd4f12c16ca22abf42ae5fd8c68b3196a5cbd4",
     ".claude/skills/commit/SKILL.md": "193751599dd039b0575cf0f355241e2b90cc8d441aa463a24b8c7542fc4b34b7",

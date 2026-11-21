@@ -15,14 +15,16 @@
 
 - 2026-11-21: Phase 1 core: detect (python/node/go/rust/java/Makefile, monorepos), verify, hooks (session-start memory, guard-bash, protect-files, format, stop-verify), `tack new` / `init` / `update` / `verify` / `detect`, 7 skills, 3 subagents, 82 tests. tack runs on itself.
 
+- 2026-11-21: Phase 2 automation: `tack loop` (any agent CLI, retries with failure output, timeout-safe, JSONL run logs with cost), `tack runs`, `tack doctor`, `tack add ci|claude-github`, `verify --markdown`. 102 tests.
+
 ## Current work
 
-Phase 1 complete; waiting for the go-ahead on Phase 2 (see docs/PLAN.md).
+Phase 3: polish and publish (see docs/PLAN.md).
 
 ## Next
 
-1. `tack loop`: agent → verify → feed failures back, with run logs in `.tack/runs/`.
-2. `tack doctor`.
-3. GitHub templates: verify workflow and optional @claude bot.
-4. CI for this repo (Linux, macOS, Windows), weekly self-update job, release workflow.
-5. Full README with diagram and demo; Claude Code plugin packaging.
+1. CI for this repo (Linux, macOS, Windows, Python 3.11-3.13) plus a vendored-runtime sync check.
+2. Weekly self-update job and Dependabot for GitHub Actions; release workflow.
+3. Full README with diagram and demo; docs/manifest.md (linked from the tack.toml header).
+4. Claude Code plugin packaging.
+5. One real `tack loop` run with Claude as an end-to-end demo (costs a few cents; ask first).

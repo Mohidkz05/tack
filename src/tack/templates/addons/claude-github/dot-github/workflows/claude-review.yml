@@ -1,0 +1,37 @@
+# Managed by tack (`tack add claude-github`). Claude reviews every pull request using the
+# project's `review` skill, then comments with its findings. (`tack add ci` runs the checks.)
+# Setup: add an ANTHROPIC_API_KEY repository secret (Settings > Secrets and variables > Actions).
+name: Claude review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review pull request #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Follow AGENTS.md and the checklist in .claude/skills/review/SKILL.md.
+            Report only confirmed issues, most severe first, each with file:line and a
+            concrete failure scenario. Post the review as a single PR comment with `gh pr comment`.
+            If there are no real issues, say so in one line.
+          claude_args: |
+            --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"

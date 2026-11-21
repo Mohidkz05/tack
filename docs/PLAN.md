@@ -2,7 +2,7 @@
 
 **One line:** the AI does the thinking. tack makes it consistent, safe, cheaper, automatic and trackable, in any language, for new and existing projects.
 
-Status: Phase 1 done (82 tests passing). Nothing is pushed to GitHub until you say so.
+Status: Phases 1 and 2 done (102 tests passing). Nothing is pushed to GitHub until you say so.
 
 ---
 
@@ -13,6 +13,8 @@ tack new my-app      # start a new project from scratch
 tack init            # add tack to a project you already have
 tack verify          # run all checks (tests, lint, types, format)
 tack loop "task"     # AI works on a task until checks pass
+tack runs            # list past loop runs (time, result, cost)
+tack add ci          # add GitHub checks (also: claude-github)
 tack doctor          # tell you if anything is broken or out of date
 tack update          # pull in the latest rules safely
 ```
@@ -37,11 +39,11 @@ People can also install it inside Claude Code as a plugin.
 
 ## Phase 2: automation
 
-- [ ] **8. Work alone (`tack loop`).** Run the AI → check → send errors back → repeat, until checks pass or a limit is hit. Works with any AI command line tool, Claude by default.
-- [ ] **9. Run logs.** Every run is saved: what was done, which checks passed, time taken, and cost when the tool reports it.
-- [ ] **10. GitHub setup.** Templates that run checks on every pull request, plus an optional `@claude` bot for PR reviews.
-- [ ] **11. Safe updates (`tack update`).** Updates files you haven't changed. Files you have changed are skipped and listed, never overwritten.
-- [ ] **12. Health check (`tack doctor`).** Finds missing tools, a broken config, or out-of-date files.
+- [x] **8. Work alone (`tack loop`).** Run the AI → check → send errors back → repeat, until checks pass or a limit is hit. Works with any AI command line tool, Claude by default.
+- [x] **9. Run logs.** Every run is saved: what was done, which checks passed, time taken, and cost when the tool reports it.
+- [x] **10. GitHub setup.** Templates that run checks on every pull request, plus an optional `@claude` bot for PR reviews.
+- [x] **11. Safe updates (`tack update`).** Updates files you haven't changed. Files you have changed are skipped and listed, never overwritten.
+- [x] **12. Health check (`tack doctor`).** Finds missing tools, a broken config, or out-of-date files.
 
 ## Phase 3: polish and publish
 

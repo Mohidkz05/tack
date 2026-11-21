@@ -621,6 +621,39 @@ def summarize(results: list[CheckResult]) -> str:
     return "\n".join(lines)
 
 
+def summarize_markdown(results: list[CheckResult]) -> str:
+    """GitHub-flavored report, e.g. for $GITHUB_STEP_SUMMARY or a PR comment."""
+    icon = {"pass": "✅", "fail": "❌", "error": "⏱️", "skip": "⚪"}
+    ok = passed(results)
+    lines = [
+        f"### tack verify: {'passed' if ok else 'failed'}",
+        "",
+        "| | Component | Check | Command | Time |",
+        "|---|---|---|---|---|",
+    ]
+    for r in results:
+        cmd = f"`{r.command}`" if r.command else "not configured"
+        secs = f"{r.seconds:.1f}s" if r.status != "skip" else ""
+        lines.append(f"| {icon[r.status]} | {r.component} | {r.check} | {cmd} | {secs} |")
+    for r in results:
+        if r.status in ("fail", "error"):
+            lines += [
+                "",
+                f"<details><summary>{r.component}:{r.check} output</summary>",
+                "",
+                "```text",
+                r.output,
+                "```",
+                "</details>",
+            ]
+    return "\n".join(lines)
+
+
+def quote_path(path: str) -> str:
+    """Quote a path for the platform's shell (sh on POSIX, cmd.exe on Windows)."""
+    return subprocess.list2cmdline([path]) if os.name == "nt" else shlex.quote(path)
+
+
 def passed(results: list[CheckResult]) -> bool:
     return all(r.status in ("pass", "skip") for r in results)
 
@@ -808,7 +841,7 @@ def hook_format(m: Manifest, event: dict) -> int:
     if globs and not any(fnmatch.fnmatch(Path(path).name, g.strip()) for g in globs.split(",")):
         return 0
     run_shell(
-        template.replace("{file}", shlex.quote(str(Path(path).resolve()))),
+        template.replace("{file}", quote_path(str(Path(path).resolve()))),
         comp.abspath(m.root),
         timeout=60,
     )
@@ -875,7 +908,9 @@ def add_verify_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--fail-fast", action="store_true", help="stop a component at its first failure")
     p.add_argument("--timeout", type=int, default=900, help="per-command timeout (seconds)")
     p.add_argument("--jobs", "-j", type=int, help="components to run in parallel (default <=8)")
-    p.add_argument("--json", action="store_true", help="machine-readable output")
+    fmt = p.add_mutually_exclusive_group()
+    fmt.add_argument("--json", action="store_true", help="machine-readable output")
+    fmt.add_argument("--markdown", action="store_true", help="GitHub-flavored report")
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
@@ -896,6 +931,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
     ok = passed(results)
     if args.json:
         print(json.dumps({"ok": ok, "results": [asdict(r) for r in results]}, indent=2))
+    elif args.markdown:
+        print(summarize_markdown(results) if results else "### tack verify: nothing to check")
     elif not results:
         print("tack verify: nothing to check")
     else:
