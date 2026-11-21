@@ -100,14 +100,14 @@ def plan(
 # GitHub Actions toolchain setup per stack. Indented to sit under `steps:`.
 _STEP = "      "
 CI_SETUP = {
-    "uv": f"{_STEP}- uses: astral-sh/setup-uv@v6",
-    "node": f'{_STEP}- uses: actions/setup-node@v5\n{_STEP}  with:\n{_STEP}    node-version: "22"',
-    "pnpm": f"{_STEP}- uses: pnpm/action-setup@v4\n{_STEP}  with:\n{_STEP}    version: latest",
+    "uv": f"{_STEP}- uses: astral-sh/setup-uv@v7",
+    "node": f'{_STEP}- uses: actions/setup-node@v7\n{_STEP}  with:\n{_STEP}    node-version: "22"',
+    "pnpm": f"{_STEP}- uses: pnpm/action-setup@v6\n{_STEP}  with:\n{_STEP}    version: latest",
     "bun": f"{_STEP}- uses: oven-sh/setup-bun@v2",
-    "go": f"{_STEP}- uses: actions/setup-go@v6\n{_STEP}  with:\n{_STEP}    go-version: stable",
+    "go": f"{_STEP}- uses: actions/setup-go@v7\n{_STEP}  with:\n{_STEP}    go-version: stable",
     "rust": f"{_STEP}- uses: dtolnay/rust-toolchain@stable\n{_STEP}  with:\n"
     f"{_STEP}    components: rustfmt, clippy",
-    "java": f"{_STEP}- uses: actions/setup-java@v5\n{_STEP}  with:\n"
+    "java": f"{_STEP}- uses: actions/setup-java@v6\n{_STEP}  with:\n"
     f'{_STEP}    distribution: temurin\n{_STEP}    java-version: "21"',
 }
 

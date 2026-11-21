@@ -7,6 +7,7 @@
 The AI does the thinking. tack makes it consistent, safe, cheaper, automatic, and trackable,<br>
 in any language, for new projects and existing ones.
 
+[![PyPI](https://img.shields.io/pypi/v/tack-harness.svg)](https://pypi.org/project/tack-harness/)
 [![CI](https://github.com/Mohidkz05/tack/actions/workflows/ci.yml/badge.svg)](https://github.com/Mohidkz05/tack/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
@@ -53,7 +54,7 @@ $ tack loop "make the failing tests in tests/test_textutils.py pass"
 
 ```bash
 # install the CLI (zero dependencies, Python 3.11+)
-uv tool install git+https://github.com/Mohidkz05/tack   # or: pipx install git+https://github.com/Mohidkz05/tack
+pip install tack-harness        # or: uv tool install tack-harness / pipx install tack-harness
 ```
 
 **Start a new project.** Claude interviews you, writes the spec, picks the stack, and scaffolds it with the ecosystem's official generator:

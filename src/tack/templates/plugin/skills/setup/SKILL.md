@@ -8,7 +8,7 @@ description: Set up tack in the current project (verification contract, rules, p
 1. **Preferred: full install with the CLI.** It adds `AGENTS.md`, `CLAUDE.md`, the vendored runtime, and safe updates. If `uv` is available, run:
 
    ```bash
-   uvx --from git+https://github.com/Mohidkz05/tack tack init
+   uvx --from tack-harness tack init
    ```
 
 2. **Plugin-only alternative.** This needs only Python 3.11+. It writes `tack.toml` from the detected stacks:

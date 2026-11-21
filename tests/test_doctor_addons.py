@@ -123,3 +123,26 @@ def test_doctor_cli_json(tmp_path: Path, monkeypatch, capsys) -> None:
     monkeypatch.chdir(tmp_path)
     cli.main(["doctor", "--json"])
     assert isinstance(json.loads(capsys.readouterr().out), list)
+
+
+def test_template_action_versions_match_repo_workflows() -> None:
+    """Dependabot bumps .github/workflows but can't see the add-on templates; this test
+    fails on its PRs until the templates are bumped too."""
+    import re
+
+    root = Path(__file__).resolve().parent.parent
+    pattern = re.compile(r"([\w.-]+/[\w.-]+)@(v\d+)")
+
+    def versions(paths: list[Path]) -> dict[str, set[str]]:
+        found: dict[str, set[str]] = {}
+        for p in paths:
+            for action, ver in pattern.findall(p.read_text(encoding="utf-8")):
+                found.setdefault(action, set()).add(ver)
+        return found
+
+    repo = versions(list((root / ".github/workflows").glob("*.yml")))
+    templates = versions(
+        [*(root / "src/tack/templates/addons").rglob("*.yml*"), root / "src/tack/install.py"]
+    )
+    for action in repo.keys() & templates.keys():
+        assert templates[action] == repo[action], f"{action}: {templates[action]} vs {repo[action]}"

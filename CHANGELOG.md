@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 (2026-11-21)
+
+- Published on PyPI: `pip install tack-harness`.
+- `tack add ci` / `claude-github` templates use the latest GitHub Actions majors (checkout v7, setup-python v7, setup-node v7, setup-go v7, setup-java v6, setup-uv v7, pnpm v6). A test now keeps the template versions in step with the repo's own Dependabot-managed workflows.
+- Fixed: the plugin build script now reads and writes UTF-8 on Windows.
+
 ## 0.1.0 (2026-11-21)
 
 First release.

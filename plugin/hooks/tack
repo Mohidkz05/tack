@@ -28,7 +28,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-RUNTIME_VERSION = "0.1.0"
+RUNTIME_VERSION = "0.1.1"
 MANIFEST = "tack.toml"
 PROGRESS_FILE = "PROGRESS.md"
 
