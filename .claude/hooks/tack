@@ -2,13 +2,13 @@
 """tack runtime: stack detection, the verification contract, and Claude Code hooks.
 
 This single file is stdlib-only (Python 3.11+). `tack init` vendors it into a project
-as `.claude/hooks/tack_runtime.py`, so hooks, agents and CI work for every teammate
+as `.claude/hooks/tack`, so hooks, agents and CI work for every teammate
 without installing anything. The `tack` CLI imports this same module.
 
 Usage (vendored):
-    python3 .claude/hooks/tack_runtime.py verify [--only lint,test] [--changed] [--json]
-    python3 .claude/hooks/tack_runtime.py detect [--write]
-    python3 .claude/hooks/tack_runtime.py hook <name>   (session-start, guard-bash,
+    python3 .claude/hooks/tack verify [--only lint,test] [--changed] [--json]
+    python3 .claude/hooks/tack detect [--write]
+    python3 .claude/hooks/tack hook <name>   (session-start, guard-bash,
                                                         protect-files, format, stop-verify)
 """
 
@@ -37,6 +37,13 @@ CHECKS = ("setup", "format", "lint", "typecheck", "test", "build")
 DEFAULT_VERIFY = ("format", "lint", "typecheck", "test")
 
 OUTPUT_TAIL = 60  # lines of output kept per failing check
+
+#: Default agent for `tack loop`: headless Claude Code that may edit files and run the
+#: checks itself. JSON output lets tack record the result and (estimated) cost.
+DEFAULT_AGENT = (
+    "claude -p {prompt} --permission-mode acceptEdits --output-format json"
+    ' --allowedTools "Bash(python3 .claude/hooks/tack verify:*)"'
+)
 
 
 # =========================================================================== manifest
@@ -170,7 +177,7 @@ def dump_toml(data: dict, header: str = "") -> str:
 MANIFEST_HEADER = """\
 # tack.toml: the project's verification contract.
 # Every check (format, lint, typecheck, test...) maps to a real command per component.
-# Hooks, agents and CI all run `python3 .claude/hooks/tack_runtime.py verify`.
+# Hooks, agents and CI all run `python3 .claude/hooks/tack verify`.
 # Docs: https://github.com/Mohidkz05/tack/blob/main/docs/manifest.md
 """
 
@@ -180,7 +187,7 @@ def default_manifest(name: str, status: str = "active") -> dict:
         "project": {"name": name, "status": status},
         "hooks": {"format_on_edit": True, "on_stop": ["lint", "typecheck"], "timeout": 300},
         "guard": {"protected": [], "deny_patterns": []},
-        "agent": {"command": "claude -p {prompt} --permission-mode acceptEdits", "max_iters": 5},
+        "agent": {"command": DEFAULT_AGENT, "max_iters": 5},
         "components": [],
     }
 
@@ -798,7 +805,7 @@ def hook_session_start(m: Manifest, _event: dict) -> int:
             cmds = ", ".join(f"{k}=`{v}`" for k, v in c.commands.items() if k in CHECKS)
             out.append(f"- {c.name} ({c.stack}, ./{c.path}): {cmds or 'none configured'}")
     out.append(
-        "Definition of done: `python3 .claude/hooks/tack_runtime.py verify --changed` "
+        "Definition of done: `python3 .claude/hooks/tack verify --changed` "
         "passes. Conventions live in AGENTS.md."
     )
     progress = m.root / PROGRESS_FILE

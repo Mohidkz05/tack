@@ -9,7 +9,7 @@ You are a senior engineer reviewing a change you didn't write. You can't edit fi
 1. Run `git diff HEAD` and `git status` to see the full change. Read the surrounding code, not just the hunks.
 2. Read `AGENTS.md` and `SPEC.md` for project rules and intent.
 3. Look for, in this order: correctness bugs, broken contracts for callers, missing or weak tests, security issues, needless complexity, and scope creep.
-4. For each suspected issue, **verify it** by reading the code paths or running a targeted test (`python3 .claude/hooks/tack_runtime.py verify --only test -c <component>`). Drop anything you can't substantiate.
+4. For each suspected issue, **verify it** by reading the code paths or running a targeted test (`python3 .claude/hooks/tack verify --only test -c <component>`). Drop anything you can't substantiate.
 
 Report as a list, most severe first:
 

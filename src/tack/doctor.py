@@ -120,12 +120,12 @@ def check(root: Path) -> list[Finding]:
     if m.components and not missing_tools:
         add(Finding(OK, "all check tools found on PATH"))
 
-    vendored = root / ".claude/hooks/tack_runtime.py"
+    vendored = root / ".claude/hooks/tack"
     if not vendored.is_file():
         add(
             Finding(
                 FAIL,
-                "vendored runtime missing (.claude/hooks/tack_runtime.py)",
+                "vendored runtime missing (.claude/hooks/tack)",
                 "run `tack update`",
             )
         )
@@ -141,7 +141,7 @@ def check(root: Path) -> list[Finding]:
             e
             for e, groups in hooks.items()
             if any(
-                "tack_runtime.py" in h.get("command", "")
+                install.TACK_MARK in h.get("command", "")
                 for g in groups
                 for h in g.get("hooks", [])
             )

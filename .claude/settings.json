@@ -2,11 +2,11 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
-      "Bash(python3 .claude/hooks/tack_runtime.py verify:*)",
-      "Bash(python3 .claude/hooks/tack_runtime.py detect:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(python3 .claude/hooks/tack verify:*)",
+      "Bash(python3 .claude/hooks/tack detect:*)"
     ],
     "deny": [
       "Read(./.env)",
@@ -20,7 +20,10 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tack_runtime.py\" hook session-start" }
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tack\" hook session-start"
+          }
         ]
       }
     ],
@@ -28,13 +31,19 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tack_runtime.py\" hook guard-bash" }
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tack\" hook guard-bash"
+          }
         ]
       },
       {
         "matcher": "Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
-          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tack_runtime.py\" hook protect-files" }
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tack\" hook protect-files"
+          }
         ]
       }
     ],
@@ -42,14 +51,22 @@
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tack_runtime.py\" hook format", "timeout": 90 }
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tack\" hook format",
+            "timeout": 90
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tack_runtime.py\" hook stop-verify", "timeout": 600 }
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/tack\" hook stop-verify",
+            "timeout": 600
+          }
         ]
       }
     ]

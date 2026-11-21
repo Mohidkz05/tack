@@ -19,7 +19,7 @@ from pathlib import Path
 
 from . import runtime
 
-DEFAULT_AGENT = "claude -p {prompt} --permission-mode acceptEdits --output-format json"
+DEFAULT_AGENT = runtime.DEFAULT_AGENT
 RUNS_DIR = Path(".tack") / "runs"
 AGENT_NOT_FOUND = (126, 127, 9009)  # POSIX "not executable" / "not found", Windows cmd
 
@@ -28,7 +28,7 @@ FIRST_PROMPT = """\
 
 Work in this repository following AGENTS.md. Keep the change focused on the task.
 You are done only when the project's checks pass:
-    python3 .claude/hooks/tack_runtime.py verify --changed
+    python3 .claude/hooks/tack verify --changed
 Before you stop, update PROGRESS.md with what you did."""
 
 RETRY_PROMPT = """\
@@ -88,14 +88,17 @@ def build_command(template: str, prompt: str) -> tuple[str, str | None]:
 
 def parse_agent_output(output: str) -> tuple[str, float | None]:
     """Extract a readable result and cost from JSON agent output (e.g. Claude Code's
-    `--output-format json`). Plain-text output is returned unchanged."""
-    text = output.strip()
-    if text.startswith("{"):
+    `--output-format json`), even when warnings are printed before the JSON.
+    Plain-text output is returned unchanged."""
+    for line in reversed(output.strip().splitlines()):
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
         try:
-            data = json.loads(text)
+            data = json.loads(line)
         except json.JSONDecodeError:
-            return output, None
-        if isinstance(data, dict):
+            continue
+        if isinstance(data, dict) and ("result" in data or "total_cost_usd" in data):
             cost = data.get("total_cost_usd")
             return str(data.get("result", output)), float(cost) if cost is not None else None
     return output, None
@@ -192,6 +195,8 @@ def run_loop(
 
             say(f"[tack] iteration {n}/{limit}: verifying")
             results = runtime.verify(m, checks, changed_only=changed_only)
+            if not results:  # agent changed nothing: "nothing to check" must not count as a pass
+                results = runtime.verify(m, checks)
             ok = runtime.passed(results)
             failures = [
                 f"{r.component}:{r.check}" for r in results if r.status in ("fail", "error")

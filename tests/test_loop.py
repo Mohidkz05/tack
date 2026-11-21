@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from conftest import PY, make_manifest, write
+from conftest import PY, git, make_manifest, write
 
 from tack import cli, loop, runtime
 
@@ -153,3 +153,20 @@ def test_cli_loop_json(tmp_path: Path, monkeypatch, capsys) -> None:
     )
     assert code == 0
     assert json.loads(capsys.readouterr().out)["status"] == "passed"
+
+
+def test_loop_no_changes_is_not_a_free_pass(repo: Path) -> None:
+    """An agent that changes nothing must not 'pass' just because no component changed."""
+    write(repo, "answer.txt", "bad")
+    make_manifest(repo, [{"name": "app", "path": ".", "stack": "x", "commands": {"test": CHECK}}])
+    git(repo, "add", ".")
+    git(repo, "commit", "-qm", "init")
+    m = runtime.load_manifest(repo)
+    noop = f'"{PY}" -c "pass"'
+    result = loop.run_loop(m, "x", agent=noop, max_iters=1, checks=("test",), echo=False)
+    assert result.status == "failed"
+
+
+def test_parse_agent_output_skips_leading_warnings() -> None:
+    out = 'Warning: workspace not trusted\n{"result": "fixed it", "total_cost_usd": 0.03}\n'
+    assert loop.parse_agent_output(out) == ("fixed it", 0.03)

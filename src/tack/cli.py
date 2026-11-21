@@ -13,7 +13,14 @@ from pathlib import Path
 
 from . import __version__, doctor, install, loop, runtime
 
-SYMBOLS = {"created": "+", "updated": "~", "merged": "~", "kept": "!", "unchanged": "="}
+SYMBOLS = {
+    "created": "+",
+    "updated": "~",
+    "merged": "~",
+    "kept": "!",
+    "unchanged": "=",
+    "removed": "-",
+}
 LEVEL_SYMBOLS = {"ok": ("✓", "32"), "warn": ("!", "33"), "fail": ("✗", "31")}
 
 
@@ -24,7 +31,14 @@ def _color(text: str, code: str) -> str:
 
 
 def _report(actions: list[install.Action], verbose: bool = False) -> None:
-    colors = {"created": "32", "updated": "36", "merged": "36", "kept": "33", "unchanged": "2"}
+    colors = {
+        "created": "32",
+        "updated": "36",
+        "merged": "36",
+        "kept": "33",
+        "unchanged": "2",
+        "removed": "35",
+    }
     for a in actions:
         if a.verb == "unchanged" and not verbose:
             continue
@@ -197,7 +211,7 @@ def cmd_loop(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(asdict(result), indent=2))
     else:
-        cost = f", ${result.cost_usd:.4f}" if result.cost_usd is not None else ""
+        cost = f", ~${result.cost_usd:.2f} est." if result.cost_usd is not None else ""
         verdict = {
             "passed": "PASSED",
             "failed": "FAILED (iteration limit reached)",

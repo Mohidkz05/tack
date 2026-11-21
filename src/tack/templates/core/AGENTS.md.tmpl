@@ -10,7 +10,7 @@ These rules apply to every coding agent (Claude Code, Codex, Cursor, Gemini, ...
 1. **Get your bearings.** Read `SPEC.md` (what we are building and why) and `PROGRESS.md` (where we left off).
 2. **Plan anything non-trivial.** Write a short plan with the files to touch, the approach, and how you will prove it works. Get it approved before large changes.
 3. **Test first.** Write or update a failing test, make it pass, then clean up.
-4. **Verify.** Run `python3 .claude/hooks/tack_runtime.py verify --changed`. Work is not done until it passes. Show the output; don't just claim success.
+4. **Verify.** Run `python3 .claude/hooks/tack verify --changed`. Work is not done until it passes. Show the output; don't just claim success.
 5. **Review your diff** as if someone else wrote it: correctness, edge cases, naming, dead code, secrets.
 6. **Record.** Update `PROGRESS.md`: what changed, decisions made and why, and what's next.
 7. **Commit** small, focused changes with Conventional Commit messages (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`).
@@ -18,7 +18,7 @@ These rules apply to every coding agent (Claude Code, Codex, Cursor, Gemini, ...
 ## Checks
 
 The commands for each check live in `tack.toml`, one entry per component (each language or package in the repo).
-Run them all with `python3 .claude/hooks/tack_runtime.py verify`, or pick some with `--only lint,test` and `--component <name>`.
+Run them all with `python3 .claude/hooks/tack verify`, or pick some with `--only lint,test` and `--component <name>`.
 If a check is missing or wrong, fix `tack.toml`. Don't skip the check.
 
 ## Rules

@@ -24,4 +24,4 @@ Review the change as if a stranger wrote it and you're responsible for it in pro
 
 ## Then
 
-Fix confirmed issues, re-run `python3 .claude/hooks/tack_runtime.py verify --changed`, and list anything you deliberately left alone, with the reason.
+Fix confirmed issues, re-run `python3 .claude/hooks/tack verify --changed`, and list anything you deliberately left alone, with the reason.

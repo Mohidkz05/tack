@@ -12,7 +12,7 @@ Guess-and-patch fixes the symptom and hides the bug. Find the cause first.
 3. **Narrow it down.** Read the full error and stack trace. Bisect: inputs, recent commits (`git log -p`, `git bisect`), or by adding temporary logging at the boundaries.
 4. **State the root cause** in one sentence before you fix anything: "X happens because Y."
 5. **Fix the cause**, not the symptom. Check for the same pattern elsewhere in the code.
-6. **Prove it.** The new test passes, the old tests pass, and `python3 .claude/hooks/tack_runtime.py verify --changed` is green.
+6. **Prove it.** The new test passes, the old tests pass, and `python3 .claude/hooks/tack verify --changed` is green.
 7. **Clean up** temporary logging. Note the cause and fix in `PROGRESS.md` if it's worth remembering.
 
 If you've tried three hypotheses without progress, stop. Summarize what you've ruled out and ask for input.

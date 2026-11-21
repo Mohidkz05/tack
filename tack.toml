@@ -1,6 +1,6 @@
 # tack.toml: the project's verification contract.
 # Every check (format, lint, typecheck, test...) maps to a real command per component.
-# Hooks, agents and CI all run `python3 .claude/hooks/tack_runtime.py verify`.
+# Hooks, agents and CI all run `python3 .claude/hooks/tack verify`.
 # Docs: https://github.com/Mohidkz05/tack/blob/main/docs/manifest.md
 
 [project]
@@ -17,7 +17,7 @@ protected = []
 deny_patterns = []
 
 [agent]
-command = "claude -p {prompt} --permission-mode acceptEdits"
+command = "claude -p {prompt} --permission-mode acceptEdits --output-format json --allowedTools \"Bash(python3 .claude/hooks/tack verify:*)\""
 max_iters = 5
 
 [[components]]

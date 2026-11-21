@@ -41,8 +41,8 @@ Every component needs a **formatter, linter, type checker (if the language has o
 ## 5. Wire up the checks
 
 ```bash
-python3 .claude/hooks/tack_runtime.py detect --write
-python3 .claude/hooks/tack_runtime.py verify
+python3 .claude/hooks/tack detect --write
+python3 .claude/hooks/tack verify
 ```
 
 `detect --write` fills in `tack.toml` and marks the project active. Open `tack.toml` and correct any command that's wrong for this setup. Iterate until verify passes.

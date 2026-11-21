@@ -52,7 +52,7 @@ def test_doctor_flags_problems(tmp_path: Path) -> None:
 
 def test_doctor_stale_runtime(tmp_path: Path) -> None:
     cli.main(["init", str(tmp_path)])
-    (tmp_path / ".claude/hooks/tack_runtime.py").write_text("# old")
+    (tmp_path / ".claude/hooks/tack").write_text("# old")
     assert any("differs" in f.message for f in doctor.check(tmp_path))
 
 

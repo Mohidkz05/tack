@@ -24,6 +24,9 @@ TEMPLATES = Path(__file__).parent / "templates"
 LOCK_PATH = Path(".tack") / "lock.json"
 BLOCK_RE = re.compile(r"<!-- tack:begin.*?-->.*?<!-- tack:end -->", re.S)
 
+#: Settings entries containing this string belong to tack (pruned when tack drops them).
+TACK_MARK = ".claude/hooks/tack"
+
 BLOCK_FILES = {"AGENTS.md"}
 MERGE_FILES = {".claude/settings.json"}
 
@@ -37,7 +40,7 @@ class Planned:
 
 @dataclass(frozen=True)
 class Action:
-    verb: str  # created | updated | merged | kept | unchanged
+    verb: str  # created | updated | merged | kept | unchanged | removed
     path: str
     note: str = ""
 
@@ -78,7 +81,7 @@ def plan(
 ) -> list[Planned]:
     files = _plan_dir(TEMPLATES / "core", context)
     runtime_src = Path(runtime.__file__).read_text(encoding="utf-8")
-    files.append(Planned(".claude/hooks/tack_runtime.py", runtime_src, "managed"))
+    files.append(Planned(".claude/hooks/tack", runtime_src, "managed"))
     for addon in addons:
         base = TEMPLATES / "addons" / addon
         if not base.is_dir():
@@ -171,9 +174,31 @@ def _hook_commands(groups: list[dict]) -> set[str]:
     return {h.get("command", "") for g in groups for h in g.get("hooks", [])}
 
 
+def _prune_tack_entries(settings: dict, template: dict) -> None:
+    """Drop tack-owned permissions and hooks that the current template no longer has."""
+    keep_perms = {i for items in template.get("permissions", {}).values() for i in items}
+    for items in settings.get("permissions", {}).values():
+        items[:] = [i for i in items if TACK_MARK not in i or i in keep_perms]
+    keep_cmds = _hook_commands([g for gs in template.get("hooks", {}).values() for g in gs])
+    for event, groups in list(settings.get("hooks", {}).items()):
+        for g in groups:
+            g["hooks"] = [
+                h
+                for h in g.get("hooks", [])
+                if TACK_MARK not in h.get("command", "") or h["command"] in keep_cmds
+            ]
+        groups[:] = [g for g in groups if g["hooks"]]
+        if not groups:
+            del settings["hooks"][event]
+
+
 def merge_settings(existing: dict, template: dict) -> dict:
-    """Union permissions; add tack hook groups whose commands aren't already present."""
+    """Union permissions; add tack hook groups whose commands aren't already present.
+
+    The user's own entries are never touched; outdated tack entries are removed.
+    """
     out = json.loads(json.dumps(existing))  # deep copy
+    _prune_tack_entries(out, template)
     for key, value in template.items():
         if key == "permissions":
             perms = out.setdefault("permissions", {})
@@ -239,6 +264,18 @@ def install(
         if f.kind == "managed" and verb in ("created", "updated", "unchanged"):
             locked[f.path] = _sha(new if new is not None else current or "")
         actions.append(Action(verb, f.path, note))
+
+    # Files tack used to manage but no longer ships: remove them if the user never edited them.
+    planned = {f.path for f in files}
+    for path in sorted(set(locked) - planned):
+        target = root / path
+        if target.is_file() and _sha(target.read_text(encoding="utf-8")) != locked[path]:
+            actions.append(Action("kept", path, "no longer used by tack; you edited it"))
+        elif target.is_file():
+            if not dry_run:
+                target.unlink()
+            actions.append(Action("removed", path, "no longer used by tack"))
+        del locked[path]
 
     if not dry_run:
         write_lock(root, {"version": runtime.RUNTIME_VERSION, "files": locked})

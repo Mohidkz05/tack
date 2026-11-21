@@ -23,7 +23,7 @@ def test_init_creates_everything(tmp_path: Path) -> None:
         "CLAUDE.md",
         "PROGRESS.md",
         ".claude/settings.json",
-        ".claude/hooks/tack_runtime.py",
+        ".claude/hooks/tack",
         ".claude/skills/plan/SKILL.md",
         ".claude/agents/reviewer.md",
         ".tack/lock.json",
@@ -120,7 +120,7 @@ def test_vendored_runtime_works_standalone(tmp_path: Path) -> None:
     """The copied runtime must run with nothing but the Python stdlib."""
     write(tmp_path, "go.mod", "module x\n")
     cli.main(["init", str(tmp_path)])
-    vendored = tmp_path / ".claude/hooks/tack_runtime.py"
+    vendored = tmp_path / ".claude/hooks/tack"
     out = subprocess.run(
         [sys.executable, "-I", str(vendored), "detect", "--json"],
         cwd=tmp_path,
@@ -149,3 +149,52 @@ def test_templates_have_valid_skill_frontmatter() -> None:
         name = text.split("\n")[1].removeprefix("name: ")
         assert name == (f.parent.name if f.name == "SKILL.md" else f.stem), f
         assert "\ndescription: " in text.split("---")[1], f
+
+
+def test_dropped_files_are_removed_unless_edited(tmp_path: Path) -> None:
+    ctx = install.context_for(tmp_path)
+    files = install.plan(ctx)
+    extra = [
+        install.Planned("old/unused.md", "old", "managed"),
+        install.Planned("old/edited.md", "old", "managed"),
+    ]
+    install.install(tmp_path, files + extra)
+    (tmp_path / "old/edited.md").write_text("mine now")
+    verbs = actions_by_path(install.install(tmp_path, files))
+    assert verbs["old/unused.md"] == "removed" and not (tmp_path / "old/unused.md").exists()
+    assert verbs["old/edited.md"] == "kept" and (tmp_path / "old/edited.md").exists()
+    assert "old/edited.md" not in install.read_lock(tmp_path)["files"]
+
+
+def test_outdated_tack_hooks_are_replaced_not_duplicated(tmp_path: Path) -> None:
+    legacy = {
+        "hooks": {
+            "Stop": [
+                {
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": "python3 .claude/hooks/tack_runtime.py hook stop-verify",
+                        },
+                        {"type": "command", "command": "say done"},
+                    ]
+                }
+            ]
+        },
+        "permissions": {"allow": ["Bash(python3 .claude/hooks/tack_runtime.py verify:*)"]},
+    }
+    write(tmp_path, ".claude/settings.json", json.dumps(legacy))
+    install.install(tmp_path, install.plan(install.context_for(tmp_path)))
+    merged = json.loads((tmp_path / ".claude/settings.json").read_text())
+    stop = [h["command"] for g in merged["hooks"]["Stop"] for h in g["hooks"]]
+    assert "say done" in stop
+    assert not any("tack_runtime.py" in c for c in stop)
+    assert sum("hook stop-verify" in c for c in stop) == 1
+    assert not any("tack_runtime.py" in p for p in merged["permissions"]["allow"])
+
+
+def test_vendored_runtime_is_invisible_to_python_tooling(tmp_path: Path) -> None:
+    """Linters, formatters and test runners only scan *.py, so the runtime has no suffix."""
+    install.install(tmp_path, install.plan(install.context_for(tmp_path)))
+    assert (tmp_path / ".claude/hooks/tack").is_file()
+    assert not list((tmp_path / ".claude").rglob("*.py"))

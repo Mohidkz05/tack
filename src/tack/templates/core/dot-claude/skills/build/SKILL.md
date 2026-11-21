@@ -17,7 +17,7 @@ description: Implement a change test-first (red, green, refactor) and finish onl
 1. Run the checks:
 
    ```bash
-   python3 .claude/hooks/tack_runtime.py verify --changed
+   python3 .claude/hooks/tack verify --changed
    ```
 
 2. If something fails, read the output, fix the cause, and run it again. Never weaken a test or a lint rule to get green.

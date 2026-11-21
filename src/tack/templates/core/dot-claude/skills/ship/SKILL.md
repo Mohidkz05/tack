@@ -8,7 +8,7 @@ description: Get finished work ready to merge: full checks, review, progress not
 1. **Run the full checks**, not just changed components:
 
    ```bash
-   python3 .claude/hooks/tack_runtime.py verify
+   python3 .claude/hooks/tack verify
    ```
 
 2. **Review:** use the `review` skill, plus the `reviewer` subagent for anything non-trivial.

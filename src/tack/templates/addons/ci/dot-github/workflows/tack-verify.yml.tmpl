@@ -24,6 +24,6 @@ jobs:
           python-version: "3.12"
 {{setup_steps}}
       - name: Install dependencies
-        run: python3 .claude/hooks/tack_runtime.py verify --only setup
+        run: python3 .claude/hooks/tack verify --only setup
       - name: Verify (format, lint, typecheck, test)
-        run: python3 .claude/hooks/tack_runtime.py verify --markdown | tee -a "$GITHUB_STEP_SUMMARY"
+        run: python3 .claude/hooks/tack verify --markdown | tee -a "$GITHUB_STEP_SUMMARY"
