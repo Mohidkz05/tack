@@ -12,10 +12,16 @@ addons = ["ci"]            # managed by `tack add`
 format_on_edit = true      # PostToolUse: format each edited file
 on_stop = ["lint", "typecheck"]   # checks the Stop hook runs on changed components
 timeout = 300              # seconds per command in hooks
+require_progress = true    # Stop hook asks for PROGRESS.md notes after real work
+progress_min_lines = 20    # ...when at least this many lines changed
+routing = true             # playbook skill routing on prompts and edits
 
 [guard]
 protected = ["migrations/*"]           # extra paths agents may not edit (fnmatch globs)
 deny_patterns = ['terraform\s+destroy'] # extra Bash regexes to block
+
+[playbook]
+source = "github:Mohidkz05/playbook"   # overrides the user-wide playbook for this project
 
 [agent]
 command = 'claude -p {prompt} --permission-mode acceptEdits --output-format json'
@@ -66,6 +72,15 @@ The default `verify` set is `format, lint, typecheck, test`. Choose your own wit
 ## Re-detecting
 
 `tack update --detect` (or `python3 .claude/hooks/tack detect --write`) adds newly found components and fills in missing commands. **It never overwrites a command you've set.**
+
+## Playbook
+
+A playbook supplies stack picks and skill routes. tack looks for it in this order:
+
+1. `[playbook].source` in this project's `tack.toml` (`tack playbook use <source> --project`)
+2. `~/.config/tack/config.toml` (`tack playbook use <source>`), for every project on the machine
+
+Sources can be `github:owner/repo` (or just `owner/repo`), any git URL, or a local folder. Remote playbooks are cloned to `~/.cache/tack/playbooks/` by `tack playbook sync`; hooks only read that local copy and never touch the network. See the [playbook repo](https://github.com/Mohidkz05/playbook) for the `routes.toml` format.
 
 ## Agents for `tack loop`
 

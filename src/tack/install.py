@@ -209,8 +209,28 @@ def merge_settings(existing: dict, template: dict) -> dict:
             hooks = out.setdefault("hooks", {})
             for event, groups in value.items():
                 cur = hooks.setdefault(event, [])
-                have = _hook_commands(cur)
-                cur += [g for g in groups if not _hook_commands([g]) <= have]
+                for group in groups:
+                    missing = [
+                        h
+                        for h in group.get("hooks", [])
+                        if h.get("command") not in _hook_commands(cur)
+                    ]
+                    if not missing:
+                        continue
+                    # add into the group with the same matcher, so hooks don't fork
+                    same = next(
+                        (
+                            g
+                            for g in cur
+                            if g.get("matcher") == group.get("matcher")
+                            and TACK_MARK in json.dumps(g)
+                        ),
+                        None,
+                    )
+                    if same is not None:
+                        same.setdefault("hooks", []).extend(missing)
+                    else:
+                        cur.append({**group, "hooks": missing})
         else:
             out.setdefault(key, value)
     return out

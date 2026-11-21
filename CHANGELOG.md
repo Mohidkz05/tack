@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 (2026-11-21)
+
+- **Playbooks:** `tack playbook use|sync|show|route` connects a playbook (stack picks + skill routes) once per machine or per project. The companion [playbook repo](https://github.com/Mohidkz05/playbook) ships 6 researched stacks and 17 routes, and updates itself weekly.
+- **Automatic skill routing:** new `route` hook on `UserPromptSubmit` and before file edits tells the agent which skill or subagent to use, once per session per route. Grouped routes keep it to one primary design skill. Routes whose skills aren't installed are skipped.
+- **Progress is always saved:** the Stop hook asks for `PROGRESS.md` notes when meaningful code changed without them (`require_progress`, `progress_min_lines`), combined with check failures into one message.
+- `bootstrap` proposes the playbook's stack pick; the session start lists stacks and routing status.
+- `tack doctor` reports playbook sync age and routed skills you haven't installed.
+- Settings merge now adds new tack hooks into the existing matcher group instead of duplicating it.
+
 ## 0.1.1 (2026-11-21)
 
 - Published on PyPI: `pip install tack-harness`.

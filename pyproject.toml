@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tack-harness"
-version = "0.1.1"
+version = "0.2.0"
 description = "A stack-agnostic harness for AI-assisted development: standard skills, guardrails, verification and automation for Claude Code (and any AGENTS.md-aware agent)."
 readme = "README.md"
 license = "MIT"

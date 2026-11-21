@@ -157,7 +157,7 @@ def check(root: Path) -> list[Finding]:
                 for h in g.get("hooks", [])
             )
         }
-        need = {"SessionStart", "PreToolUse", "PostToolUse", "Stop"}
+        need = {"SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"}
         if need <= wired:
             add(Finding(OK, "Claude Code hooks wired"))
         else:
@@ -195,6 +195,43 @@ def check(root: Path) -> list[Finding]:
 
     if not (root / ".git").exists():
         add(Finding(WARN, "not a git repository", "run `git init`: --changed and hooks need git"))
+
+    source = runtime.playbook_source(m)
+    if source:
+        pdir = runtime.find_playbook(m)
+        if pdir is None:
+            add(Finding(WARN, f"playbook {source} isn't downloaded", "run `tack playbook sync`"))
+        else:
+            from . import playbook as pb
+
+            age = pb.age_days(pdir)
+            if age is not None and age > 14:
+                add(
+                    Finding(
+                        WARN, f"playbook last synced {age:.0f} days ago", "run `tack playbook sync`"
+                    )
+                )
+            status = pb.route_status(runtime.load_routes(pdir), root)
+            missing = [r for r, target in status if not target]
+            if missing:
+                for r in missing[:8]:
+                    target = r.get("skill") or r.get("agent")
+                    add(
+                        Finding(
+                            WARN,
+                            f"route '{r['name']}' needs '{target}', not installed",
+                            pb.install_hint(r),
+                        )
+                    )
+            add(
+                Finding(
+                    OK,
+                    f"playbook: {len(status) - len(missing)}/{len(status)} routes "
+                    f"usable ({source})",
+                )
+            )
+    else:
+        add(Finding(OK, "no playbook connected (optional: `tack playbook use <source>`)"))
 
     agent_tool = executable_of(m.agent.get("command", "claude"))
     if agent_tool and not shutil.which(agent_tool):

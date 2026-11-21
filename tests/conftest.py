@@ -27,6 +27,7 @@ def make_manifest(root: Path, components: list[dict], **extra) -> runtime.Manife
     data = runtime.default_manifest(root.name)
     data["components"] = components
     data.update(extra)
+    root.mkdir(parents=True, exist_ok=True)
     (root / runtime.MANIFEST).write_text(runtime.dump_toml(data), encoding="utf-8")
     return runtime.load_manifest(root)
 
@@ -54,6 +55,20 @@ def hook(name: str, event: dict) -> dict | None:
         return json.loads(out)
     except json.JSONDecodeError:
         return {"text": out}
+
+
+@pytest.fixture(autouse=True)
+def isolated_home(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> Path:
+    """Never read or write the developer's real ~/.config/tack, ~/.cache or ~/.claude."""
+    home = tmp_path_factory.mktemp("home")
+    for var in ("HOME", "USERPROFILE"):
+        monkeypatch.setenv(var, str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(home / ".cache"))
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    return home
 
 
 @pytest.fixture

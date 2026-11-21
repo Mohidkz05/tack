@@ -42,7 +42,8 @@ $ tack loop "make the failing tests in tests/test_textutils.py pass"
 | A plain AI coding agent... | With tack |
 |---|---|
 | Says "done" when it *thinks* it's done | Can't finish until the project's real checks pass (a `Stop` hook runs them) |
-| Forgets everything between sessions | `PROGRESS.md` is injected at the start of every session |
+| Forgets everything between sessions | `PROGRESS.md` is shown at the start of every session, and Claude can't finish real work without updating it |
+| Forgets which skill to use | A [playbook](https://github.com/Mohidkz05/playbook) routes it: "landing page" → your design skill, automatically |
 | Usually avoids `rm -rf /`, force-pushes, and editing `.env` | **Can't** do them. Guard hooks block them before they run |
 | Burns tokens formatting files and figuring out how to run your tests | Formatting runs on save; one contract tells every agent how to verify |
 | Follows whatever conventions you remember to repeat | Same rules for every agent and every human (`AGENTS.md`) |
@@ -159,11 +160,31 @@ Components run in parallel. `--changed` checks only the components touched since
 | `PreToolUse` · Bash | **Denies** `rm -rf /`/`~`, force-push to main, `curl \| sh`, `dd`/`mkfs`, writes to `.env`. **Asks** before `git reset --hard`, `sudo`, `--no-verify`, publishing |
 | `PreToolUse` · Edit | Blocks edits to secrets (`.env`, keys) and lockfiles (use the package manager) |
 | `PostToolUse` | Formats the file that was just edited, with that component's formatter |
-| `Stop` | Runs fast checks on what changed and sends the agent back if they fail |
+| `UserPromptSubmit` · `PreToolUse` | Playbook routing: points the agent at the right skill for what you asked or the file it's editing |
+| `Stop` | Runs fast checks on what changed, and requires `PROGRESS.md` notes after real work. Sends the agent back (once) if either is missing |
 
 All hooks are one stdlib-only file vendored into the project (`.claude/hooks/tack`). Teammates and CI need nothing installed, and it has no `.py` extension, so your linters and test runners never see it.
 
-### 4. Automation
+### 4. Your playbook: standard stacks and automatic skill routing
+
+A **playbook** is a small repo with your picks: [`stacks/`](https://github.com/Mohidkz05/playbook/tree/main/stacks) (what to build with, per project type) and [`routes.toml`](https://github.com/Mohidkz05/playbook/blob/main/routes.toml) ("in this situation, use this skill"). Connect one once for your whole machine:
+
+```bash
+tack playbook use Mohidkz05/playbook     # or your fork, or a local folder
+tack playbook                            # stacks, routes, and which skills you're missing
+tack playbook route "make the landing page look better"
+#   redesign  → redesign-existing-projects  ✓
+```
+
+From then on, in every tack project:
+
+- **Skills are picked for you.** When what you type, or the file Claude is about to edit, matches a route, Claude is told which skill to load (once per session per route). Design routes are grouped, so only the most specific design skill fires.
+- **New projects start from your stack picks.** `bootstrap` proposes the playbook's pick for the project type.
+- **`tack doctor`** lists routed skills you haven't installed, and how to install them.
+
+The [playbook repo](https://github.com/Mohidkz05/playbook) updates itself: a weekly job researches new releases and skills, and opens a PR with sources.
+
+### 5. Automation
 
 ```bash
 tack loop "add a /health endpoint with a test"   # agent → verify → feed failures back → repeat
@@ -198,6 +219,7 @@ The tack repo keeps itself current too. A [weekly workflow](.github/workflows/up
 | `tack verify [--only lint,test] [-c api] [--changed] [--json\|--markdown]` | Run the checks |
 | `tack loop "<task>" [--agent CMD] [-n 5]` | Let an agent work until the checks pass |
 | `tack runs` | Recent loop runs |
+| `tack playbook [use\|sync\|route]` | Connect, update, and test your playbook |
 | `tack doctor` | Diagnose the setup |
 | `tack detect [--write]` | Show detected components / merge them into `tack.toml` |
 
@@ -212,7 +234,7 @@ tack is deliberately small. Methodology packs like [Superpowers](https://github.
 ```bash
 git clone https://github.com/Mohidkz05/tack && cd tack
 uv sync
-uv run pytest                      # 114 tests, run in CI on Linux/macOS/Windows × Python 3.11-3.13
+uv run pytest                      # 143 tests, run in CI on Linux/macOS/Windows × Python 3.11-3.13
 uv run tack verify                 # tack checks itself
 python3 scripts/build_plugin.py    # regenerate plugin/ after changing templates
 ```

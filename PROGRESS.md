@@ -23,11 +23,13 @@
 
 - 2026-11-21: v0.1.1 on PyPI (`pip install tack-harness`) via trusted publishing; action versions bumped everywhere (Dependabot PR #1 superseded and auto-closed); template/workflow version sync test added.
 
+- 2026-11-21: v0.2.0: playbooks (stacks + skill routing, verified live with Claude Code), progress-notes rule in the Stop hook, companion repo Mohidkz05/playbook.
+
 ## Current work
 
 Nothing in progress.
 
 ## Next
 
-1. Optional: add an ANTHROPIC_API_KEY secret so the upstream watch can open fix PRs by itself.
-2. Later (see docs/PLAN.md): parallel tasks in separate worktrees, add-on catalog, more agent adapters, run-log viewer.
+1. Optional: ANTHROPIC_API_KEY secrets on tack and playbook so the weekly jobs open PRs by themselves.
+2. Later: routing adapters for Cursor/Codex, routes that learn from usage, parallel worktree tasks.

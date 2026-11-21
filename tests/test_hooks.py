@@ -175,3 +175,55 @@ def test_session_start_new_project_points_to_bootstrap(tmp_path: Path) -> None:
     data = runtime.default_manifest("x", status="new")
     (tmp_path / "tack.toml").write_text(runtime.dump_toml(data))
     assert "bootstrap" in hook("session-start", {"cwd": str(tmp_path)})["text"]
+
+
+# --------------------------------------------------------------------- progress notes
+
+
+def _progress_repo(repo: Path) -> None:
+    write(repo, "PROGRESS.md", "# Progress\n")
+    make_manifest(repo, [{"name": "app", "path": ".", "stack": "x", "commands": {}}])
+    git(repo, "add", ".")
+    git(repo, "commit", "-qm", "init")
+
+
+def test_stop_asks_for_progress_after_real_work(repo: Path) -> None:
+    _progress_repo(repo)
+    write(repo, "app.py", "x = 1\n" * 30)
+    out = hook("stop-verify", {"cwd": str(repo)})
+    assert out["decision"] == "block" and "PROGRESS.md" in out["reason"]
+
+
+def test_stop_ok_when_progress_updated(repo: Path) -> None:
+    _progress_repo(repo)
+    write(repo, "app.py", "x = 1\n" * 30)
+    write(repo, "PROGRESS.md", "# Progress\n- did things\n")
+    assert hook("stop-verify", {"cwd": str(repo)}) is None
+
+
+def test_stop_ignores_tiny_changes(repo: Path) -> None:
+    _progress_repo(repo)
+    write(repo, "app.py", "x = 1\n")
+    assert hook("stop-verify", {"cwd": str(repo)}) is None
+
+
+def test_progress_rule_can_be_disabled(repo: Path) -> None:
+    write(repo, "PROGRESS.md", "# Progress\n")
+    make_manifest(repo, [], hooks={"require_progress": False, "on_stop": []})
+    git(repo, "add", ".")
+    git(repo, "commit", "-qm", "init")
+    write(repo, "app.py", "x = 1\n" * 30)
+    assert hook("stop-verify", {"cwd": str(repo)}) is None
+
+
+def test_failures_and_progress_reported_together(repo: Path) -> None:
+    write(repo, "PROGRESS.md", "# Progress\n")
+    make_manifest(
+        repo,
+        [{"name": "app", "path": ".", "stack": "x", "commands": {"lint": fail_cmd("lint broke")}}],
+    )
+    git(repo, "add", ".")
+    git(repo, "commit", "-qm", "init")
+    write(repo, "app.py", "x = 1\n" * 30)
+    reason = hook("stop-verify", {"cwd": str(repo)})["reason"]
+    assert "lint broke" in reason and "PROGRESS.md" in reason

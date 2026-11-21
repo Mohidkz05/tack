@@ -11,7 +11,7 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-from . import __version__, doctor, install, loop, runtime
+from . import __version__, doctor, install, loop, playbook, runtime
 
 SYMBOLS = {
     "created": "+",
@@ -277,6 +277,78 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 1 if any(f.level == "fail" for f in findings) else 0
 
 
+def cmd_playbook(args: argparse.Namespace) -> int:
+    action = args.action
+    root = runtime.find_root()
+    m = runtime.load_manifest(root) if root else None
+
+    if action == "use":
+        if not args.args:
+            print(
+                "usage: tack playbook use <github:owner/repo | owner/repo | URL | folder>",
+                file=sys.stderr,
+            )
+            return 2
+        source = playbook.normalize(args.args[0])
+        if args.project:
+            if root is None:
+                print("tack: --project needs a tack project (run `tack init`)", file=sys.stderr)
+                return 2
+            playbook.set_project_source(root, source)
+            print(f"playbook for this project: {source}")
+        else:
+            where = playbook.set_user_source(source)
+            print(f"playbook for every project: {source}  ({where})")
+        result = playbook.sync(source)
+        print(f"  {'✓' if result.ok else '✗'} {result.message}: {result.path}")
+        return 0 if result.ok else 1
+
+    source = runtime.playbook_source(m)
+    if not source:
+        print("no playbook connected. Try: tack playbook use github:Mohidkz05/playbook")
+        return 1 if action != "show" else 0
+
+    if action == "sync":
+        result = playbook.sync(source)
+        print(f"{'✓' if result.ok else '✗'} {source}: {result.message} ({result.path})")
+        return 0 if result.ok else 1
+
+    pdir = runtime.find_playbook(m)
+    if pdir is None:
+        print(f"playbook {source} is not downloaded yet. Run `tack playbook sync`.")
+        return 1
+    routes = runtime.load_routes(pdir)
+
+    if action == "route":
+        text = " ".join(args.args)
+        hits = runtime.match_routes(routes, text=text, file=args.file or "")
+        if not hits:
+            print("no route matches")
+            return 0
+        status = dict((r["name"], t) for r, t in playbook.route_status(hits, root or Path.cwd()))
+        for r in hits:
+            target = status[r["name"]]
+            mark = "✓" if target else "✗ not installed"
+            print(f"  {r['name']:<20} → {r.get('skill') or r.get('agent')}  {mark}")
+        return 0
+
+    # show
+    print(f"playbook: {source}\n  path: {pdir}")
+    if (age := playbook.age_days(pdir)) is not None:
+        print(f"  synced: {age:.0f} day(s) ago")
+    stacks = sorted(f.stem for f in (pdir / "stacks").glob("*.md"))
+    print(f"\nStacks: {', '.join(stacks) or 'none'}")
+    print(f"\nRoutes ({len(routes)}):")
+    for r, target in playbook.route_status(routes, root or Path.cwd()):
+        sym, color = ("✓", "32") if target else ("✗", "33")
+        group = f" [{r['group']}]" if r.get("group") else ""
+        line = f"  {sym} {r['name']:<20}{group} → {r.get('skill') or r.get('agent')}"
+        if not target:
+            line += f"   ({playbook.install_hint(r)})"
+        print(_color(line, color))
+    return 0
+
+
 # --------------------------------------------------------------------------- parser
 
 
@@ -335,6 +407,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--limit", type=int, default=10)
     sp.add_argument("--json", action="store_true")
     sp.set_defaults(func=cmd_runs)
+
+    sp = sub.add_parser("playbook", help="connect and inspect your playbook (stacks + routing)")
+    sp.add_argument("action", choices=["show", "use", "sync", "route"], nargs="?", default="show")
+    sp.add_argument("args", nargs="*", help="use: github:owner/repo, URL or folder · route: text")
+    sp.add_argument("--project", action="store_true", help="for `use`: only this project")
+    sp.add_argument("--file", help="for `route`: also match this file name")
+    sp.set_defaults(func=cmd_playbook)
 
     sp = sub.add_parser("doctor", help="check the setup for problems")
     sp.add_argument("--json", action="store_true")

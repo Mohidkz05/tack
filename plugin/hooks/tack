@@ -28,7 +28,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-RUNTIME_VERSION = "0.1.1"
+RUNTIME_VERSION = "0.2.0"
 MANIFEST = "tack.toml"
 PROGRESS_FILE = "PROGRESS.md"
 
@@ -73,6 +73,7 @@ class Manifest:
     hooks: dict
     guard: dict
     agent: dict
+    playbook: dict = field(default_factory=dict)
 
     def component_for(self, file: Path) -> Component | None:
         """Most specific component whose directory contains `file`."""
@@ -122,6 +123,7 @@ def load_manifest(root: Path | None = None) -> Manifest:
         hooks=data.get("hooks", {}),
         guard=data.get("guard", {}),
         agent=data.get("agent", {}),
+        playbook=data.get("playbook", {}),
     )
 
 
@@ -189,7 +191,13 @@ MANIFEST_HEADER = """\
 def default_manifest(name: str, status: str = "active") -> dict:
     return {
         "project": {"name": name, "status": status},
-        "hooks": {"format_on_edit": True, "on_stop": ["lint", "typecheck"], "timeout": 300},
+        "hooks": {
+            "format_on_edit": True,
+            "on_stop": ["lint", "typecheck"],
+            "timeout": 300,
+            "require_progress": True,
+            "progress_min_lines": 20,
+        },
         "guard": {"protected": [], "deny_patterns": []},
         "agent": {"command": DEFAULT_AGENT, "max_iters": 5},
         "components": [],
@@ -667,6 +675,177 @@ def passed(results: list[CheckResult]) -> bool:
     return all(r.status in ("pass", "skip") for r in results)
 
 
+# =========================================================================== playbook
+# A playbook is a folder (usually a git repo) with stacks/*.md and routes.toml.
+# Source precedence: tack.toml [playbook].source, then the user config
+# (~/.config/tack/config.toml). Remote sources are cloned by `tack playbook sync` into
+# ~/.cache/tack/playbooks/; hooks only ever read the local copy (no network in hooks).
+
+
+def _home() -> Path:
+    return Path(os.environ.get("HOME") or os.environ.get("USERPROFILE") or Path.home())
+
+
+def user_config_path() -> Path:
+    base = os.environ.get("XDG_CONFIG_HOME") or str(_home() / ".config")
+    return Path(base) / "tack" / "config.toml"
+
+
+def playbook_cache_root() -> Path:
+    base = os.environ.get("XDG_CACHE_HOME") or str(_home() / ".cache")
+    return Path(base) / "tack" / "playbooks"
+
+
+def read_user_config() -> dict:
+    try:
+        return tomllib.loads(user_config_path().read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return {}
+
+
+def playbook_source(m: Manifest | None) -> str | None:
+    if m and m.playbook.get("source"):
+        return str(m.playbook["source"])
+    return read_user_config().get("playbook", {}).get("source")
+
+
+def is_remote(source: str) -> bool:
+    return source.startswith(("github:", "https://", "http://", "git@", "file://"))
+
+
+def remote_url(source: str) -> str:
+    return f"https://github.com/{source[7:]}.git" if source.startswith("github:") else source
+
+
+def playbook_path(source: str) -> Path:
+    """Where a playbook source lives on disk (cache dir for remote sources)."""
+    if not is_remote(source):
+        return Path(source).expanduser().resolve()
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", re.sub(r"^(github:|[a-z+]+://|git@)", "", source))
+    return playbook_cache_root() / slug.strip("-").removesuffix(".git")
+
+
+def find_playbook(m: Manifest | None) -> Path | None:
+    source = playbook_source(m)
+    if not source:
+        return None
+    path = playbook_path(source)
+    return path if (path / "routes.toml").is_file() or (path / "stacks").is_dir() else None
+
+
+def load_routes(pdir: Path | None) -> list[dict]:
+    if pdir is None:
+        return []
+    try:
+        data = tomllib.loads((pdir / "routes.toml").read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return []
+    return [
+        r for r in data.get("route", []) if r.get("name") and (r.get("skill") or r.get("agent"))
+    ]
+
+
+def _word_pattern(word: str) -> re.Pattern:
+    return re.compile(r"(?<![\w-])" + re.escape(word) + r"(?![\w-])", re.IGNORECASE)
+
+
+def match_routes(routes: list[dict], text: str = "", file: str = "") -> list[dict]:
+    """Routes triggered by user text and/or a file name. Within a group, the first
+    matching route wins, so playbooks list their most specific routes first."""
+    name = Path(file).name.lower() if file else ""
+    chosen: list[dict] = []
+    used_groups: set[str] = set()
+    for r in routes:
+        hit = bool(text) and any(_word_pattern(w).search(text) for w in r.get("words", []))
+        hit = hit or (
+            bool(name) and any(fnmatch.fnmatch(name, g.lower()) for g in r.get("files", []))
+        )
+        if not hit:
+            continue
+        group = r.get("group")
+        if group:
+            if group in used_groups:
+                continue
+            used_groups.add(group)
+        chosen.append(r)
+    return chosen
+
+
+def installed_plugins() -> set[str]:
+    """Plugin ids like 'vercel@claude-plugins-official' from Claude Code's registry."""
+    try:
+        data = json.loads(
+            (_home() / ".claude/plugins/installed_plugins.json").read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError):
+        return set()
+    plugins = data.get("plugins", data) if isinstance(data, dict) else {}
+    return set(plugins) if isinstance(plugins, dict) else set()
+
+
+def resolve_route_target(r: dict, root: Path, plugins: set[str] | None = None) -> str | None:
+    """The name the agent should use for this route's skill/agent, or None if unavailable."""
+    plugins = installed_plugins() if plugins is None else plugins
+    if r.get("builtin"):
+        return r.get("skill") or r.get("agent")
+    if r.get("plugin"):
+        return (r.get("skill") or r.get("agent")) if r["plugin"] in plugins else None
+    if r.get("agent"):
+        name = r["agent"]
+        for base in (root / ".claude/agents", _home() / ".claude/agents"):
+            if (base / f"{name}.md").is_file():
+                return name
+    else:
+        name = r["skill"]
+        for base in (root / ".claude/skills", _home() / ".claude/skills"):
+            if (base / name / "SKILL.md").is_file():
+                return name
+    if r.get("project") and any(p.startswith("tack@") for p in plugins):
+        return f"tack:{name}"  # provided by the tack plugin instead of a project install
+    return None
+
+
+def _state_file(root: Path) -> Path:
+    return root / ".tack" / "state" / "routes.json"
+
+
+def routes_already_shown(root: Path, session: str) -> set[str]:
+    try:
+        return set(json.loads(_state_file(root).read_text(encoding="utf-8")).get(session, []))
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return set()
+
+
+def remember_routes(root: Path, session: str, names: list[str]) -> None:
+    path = _state_file(root)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            data = {}
+    except (OSError, json.JSONDecodeError):
+        data = {}
+    data[session] = sorted(set(data.get(session, [])) | set(names))
+    data = dict(list(data.items())[-20:])  # keep the last 20 sessions
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def route_message(hits: list[tuple[dict, str]]) -> str:
+    lines = ["[tack routing] The project's playbook says:"]
+    for r, target in hits:
+        how = (
+            f"delegate to the `{target}` subagent"
+            if r.get("agent")
+            else f"load the `{target}` skill (Skill tool) before continuing"
+        )
+        lines.append(f"- {r.get('reason', r['name'])}: {how}.")
+    lines.append("Skip a suggestion only if it clearly doesn't fit the task.")
+    return "\n".join(lines)
+
+
 # =========================================================================== guards
 
 #: (regex, decision, reason). "deny" hard-blocks; "ask" makes a human confirm.
@@ -810,6 +989,19 @@ def hook_session_start(m: Manifest, _event: dict) -> int:
         f"Definition of done: `{self_command(m.root)} verify --changed` "
         "passes. Conventions live in AGENTS.md."
     )
+    if pdir := find_playbook(m):
+        stacks = sorted(f.stem for f in (pdir / "stacks").glob("*.md"))
+        routes = load_routes(pdir)
+        if stacks and (m.status == "new" or not m.components):
+            out.append(
+                f"Playbook stack picks ({', '.join(stacks)}) are in {pdir.as_posix()}/stacks/. "
+                "Read the file matching this project type and propose that stack first."
+            )
+        if routes:
+            out.append(
+                f"Skill routing is on ({len(routes)} playbook routes): you'll be told "
+                "when a skill applies."
+            )
     progress = m.root / PROGRESS_FILE
     if progress.is_file():
         text = tail(_read(progress), 80)
@@ -857,27 +1049,112 @@ def hook_format(m: Manifest, event: dict) -> int:
     return 0
 
 
+#: Files whose changes don't count as "work" for the progress-notes rule.
+PROGRESS_EXEMPT = {PROGRESS_FILE, "SPEC.md", *LOCKFILES}
+
+
+def changed_line_count(root: Path) -> int:
+    """Lines added or removed since HEAD (tracked) plus lines in new untracked files,
+    ignoring PROGRESS.md, SPEC.md and lockfiles."""
+
+    def git(*args: str) -> list[str]:
+        try:
+            out = subprocess.run(["git", *args], cwd=root, capture_output=True, timeout=30, **TEXT)
+        except (OSError, subprocess.TimeoutExpired):
+            return []
+        return out.stdout.splitlines() if out.returncode == 0 else []
+
+    total = 0
+    for line in git("diff", "--numstat", "HEAD") or git("diff", "--numstat"):
+        parts = line.split("\t")
+        if len(parts) == 3 and Path(parts[2]).name not in PROGRESS_EXEMPT:
+            total += sum(int(n) for n in parts[:2] if n.isdigit())  # "-" for binary files
+    for name in git("ls-files", "--others", "--exclude-standard"):
+        f = root / name
+        if f.name in PROGRESS_EXEMPT or not f.is_file() or f.stat().st_size > 1_000_000:
+            continue
+        total += _read(f).count("\n")
+    return total
+
+
+def progress_reminder(m: Manifest) -> str | None:
+    """Ask for PROGRESS.md notes when meaningful work happened without them."""
+    if not m.hooks.get("require_progress", True):
+        return None
+    progress = m.root / PROGRESS_FILE
+    if not progress.is_file():
+        return None
+    if any(f.name == PROGRESS_FILE and f.parent == m.root for f in changed_files(m.root)):
+        return None
+    if changed_line_count(m.root) < int(m.hooks.get("progress_min_lines", 20)):
+        return None
+    return (
+        f"tack: you changed code but not {PROGRESS_FILE}. Before finishing, add a short entry: "
+        "what you did, any decisions (with the reason), and what's next. The next session "
+        "starts from these notes."
+    )
+
+
 def hook_stop_verify(m: Manifest, event: dict) -> int:
-    """Stop: if code changed, run fast checks; block the stop when they fail."""
+    """Stop: run fast checks on changed code and require progress notes.
+
+    Everything is reported in one message, so the agent is sent back at most once.
+    """
     if event.get("stop_hook_active"):
         return 0  # we already sent the agent back once this turn; don't loop forever
+    reasons: list[str] = []
     checks = tuple(m.hooks.get("on_stop", ["lint", "typecheck"]))
-    if not checks:
+    if checks:
+        results = verify(
+            m, checks=checks, changed_only=True, timeout=int(m.hooks.get("timeout", 300))
+        )
+        if not passed(results):
+            reasons.append(
+                "tack: checks failed on the code you changed. Fix them before "
+                "finishing.\n" + summarize([r for r in results if r.status != "skip"])
+            )
+    if reminder := progress_reminder(m):
+        reasons.append(reminder)
+    if reasons:
+        _emit({"decision": "block", "reason": "\n\n".join(reasons)})
+    return 0
+
+
+def hook_route(m: Manifest, event: dict) -> int:
+    """UserPromptSubmit / PreToolUse: point the agent at the right skill, once per session."""
+    if not m.hooks.get("routing", True):
         return 0
-    results = verify(m, checks=checks, changed_only=True, timeout=int(m.hooks.get("timeout", 300)))
-    if passed(results):
+    routes = load_routes(find_playbook(m))
+    if not routes:
         return 0
+    event_name = event.get("hook_event_name") or "UserPromptSubmit"
+    text = event.get("prompt", "") if event_name == "UserPromptSubmit" else ""
+    ti = event.get("tool_input") or {}
+    file = ti.get("file_path") or ti.get("notebook_path") or ""
+    session = str(event.get("session_id") or "default")
+    shown = routes_already_shown(m.root, session)
+    plugins = installed_plugins()
+    hits = [
+        (r, t)
+        for r in match_routes(routes, text, file)
+        if r["name"] not in shown and (t := resolve_route_target(r, m.root, plugins))
+    ]
+    if not hits:
+        return 0
+    remember_routes(m.root, session, [r["name"] for r, _ in hits])
     _emit(
         {
-            "decision": "block",
-            "reason": "tack: checks failed on the code you changed. Fix them before finishing.\n"
-            + summarize([r for r in results if r.status != "skip"]),
+            "hookSpecificOutput": {
+                "hookEventName": event_name,
+                "additionalContext": route_message(hits),
+            }
         }
     )
     return 0
 
 
 HOOKS = {
+    "route": hook_route,
     "session-start": hook_session_start,
     "guard-bash": hook_guard_bash,
     "protect-files": hook_protect_files,

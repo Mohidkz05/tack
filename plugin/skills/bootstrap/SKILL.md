@@ -21,7 +21,7 @@ Fill in the template: goal, users, v1 scope as a checklist, non-goals, constrain
 
 ## 3. Propose a stack
 
-Recommend **one** stack with a one-line reason, plus one alternative. Prefer boring, well-supported tools the user already knows. Wait for approval.
+If the session-start note lists **playbook stack picks**, read the file for this project type first and propose its pick (say it comes from the playbook). Otherwise, recommend **one** stack with a one-line reason, plus one alternative. Prefer boring, well-supported tools the user already knows. Wait for approval.
 
 ## 4. Scaffold with official generators
 
