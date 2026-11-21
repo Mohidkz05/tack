@@ -229,17 +229,26 @@ Every command that matters is also available without installing anything: `pytho
 
 tack is deliberately small. Methodology packs like [Superpowers](https://github.com/obra/superpowers) and spec frameworks like [Spec Kit](https://github.com/github/spec-kit) and [OpenSpec](https://github.com/Fission-AI/OpenSpec) are mostly instructions for the agent. tack's focus is the **enforcement layer** underneath: a language-agnostic verification contract, hooks that block what instructions can only discourage, and automation that runs without supervision. They compose well. Use a spec framework for planning, and tack to make sure what gets built actually passes.
 
+## Design decisions
+
+- **The runtime is one stdlib-only file, vendored into each project.** Hooks run on every tool call, so they must start fast and work for teammates and CI without installing anything. The same file powers the CLI, and a CI check keeps the copies identical.
+- **Hooks fail open, guards fail closed.** A malformed `tack.toml` or a missing tool never wedges the agent; destructive commands are denied by pattern before they run.
+- **No network calls in hooks.** Playbooks are synced explicitly; hooks read only the local copy, so they stay fast and work offline.
+- **Updates never clobber user edits.** Every managed file is hash-locked; edited files are kept, `AGENTS.md` uses marked blocks, and settings are merged, not overwritten.
+- **One source of truth.** The Claude Code plugin is generated from the same templates `tack init` installs, and a test fails if they drift.
+- **Tested against reality.** Besides 144 unit tests on three operating systems, the loop and routing were verified with real Claude Code runs, which surfaced three bugs the fake-agent tests had missed.
+
 ## Development
 
 ```bash
 git clone https://github.com/Mohidkz05/tack && cd tack
 uv sync
-uv run pytest                      # 143 tests, run in CI on Linux/macOS/Windows × Python 3.11-3.13
+uv run pytest                      # 144 tests, run in CI on Linux/macOS/Windows × Python 3.11-3.13
 uv run tack verify                 # tack checks itself
 python3 scripts/build_plugin.py    # regenerate plugin/ after changing templates
 ```
 
-tack is built with tack: this repo has its own `tack.toml`, hooks, skills, and `PROGRESS.md`. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [build plan](docs/PLAN.md).
+tack is built with tack: this repo has its own `tack.toml`, hooks, skills, and `PROGRESS.md`. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [roadmap](docs/roadmap/README.md).
 
 ## License
 
