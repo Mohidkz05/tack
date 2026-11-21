@@ -19,14 +19,15 @@
 - 2026-11-21: Phase 2 automation: `tack loop` (any agent CLI, retries with failure output, timeout-safe, JSONL run logs with cost), `tack runs`, `tack doctor`, `tack add ci|claude-github`, `verify --markdown`. 102 tests.
 - 2026-11-21: First real `tack loop` run with Claude (subscription): fixed a buggy slugify in 1 attempt, 40s. The run exposed 3 bugs, all fixed: the project's linter checked tack's vendored .py file (renamed to extension-less `.claude/hooks/tack`), cost parsing broke on leading warnings, and a no-change attempt counted as a pass.
 
+- 2026-11-21: Phase 3: Claude Code plugin + marketplace (validated), CI matrix (3 OS x 3 Python, all green after a Windows UTF-8 fix), upstream watch, Dependabot, release workflow, README/docs. Released v0.1.0.
+
 ## Current work
 
-Phase 3: polish and publish (see docs/PLAN.md).
+Nothing in progress.
 
 ## Next
 
-1. CI for this repo (Linux, macOS, Windows, Python 3.11-3.13) plus a vendored-runtime sync check.
-2. Weekly self-update job and Dependabot for GitHub Actions; release workflow.
-3. Full README with diagram and demo; docs/manifest.md (linked from the tack.toml header).
-4. Claude Code plugin packaging.
-5. Put the real demo transcript in the README.
+1. Merge Dependabot's actions PR, then bump the same action versions in the add-on templates (`src/tack/templates/addons/`), which Dependabot doesn't see. Consider a test that keeps them in sync with `.github/workflows/`.
+2. Optional: publish to PyPI (add trusted publisher on pypi.org, set repo variable PUBLISH_TO_PYPI=true).
+3. Optional: add an ANTHROPIC_API_KEY secret so the upstream watch can open fix PRs by itself.
+4. Later (see docs/PLAN.md): parallel tasks in separate worktrees, add-on catalog, more agent adapters, run-log viewer.
