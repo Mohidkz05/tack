@@ -10,6 +10,8 @@ from __future__ import annotations
 import datetime as _dt
 import json
 import re
+import shlex
+import shutil
 import subprocess
 import sys
 import threading
@@ -79,11 +81,17 @@ class RunLog:
             fh.write(json.dumps(record, default=str) + "\n")
 
 
-def build_command(template: str, prompt: str) -> tuple[str, str | None]:
-    """Return (shell command, stdin text)."""
+def build_command(template: str, prompt: str) -> tuple[list[str], str | None]:
+    """Turn the agent template into (argv, stdin).
+
+    The agent runs without a shell, so the prompt is passed as one exact argument on
+    every OS (cmd.exe can't carry multi-line arguments). Without `{prompt}` in the
+    template, the prompt goes to stdin.
+    """
+    argv = shlex.split(template, posix=True)
     if "{prompt}" in template:
-        return template.replace("{prompt}", runtime.quote_path(prompt)), None
-    return template, prompt
+        return [a.replace("{prompt}", prompt) for a in argv], None
+    return argv, prompt
 
 
 def parse_agent_output(output: str) -> tuple[str, float | None]:
@@ -105,14 +113,16 @@ def parse_agent_output(output: str) -> tuple[str, float | None]:
 
 
 def run_agent(
-    cmd: str, stdin: str | None, cwd: Path, timeout: int, echo: bool
+    argv: list[str], stdin: str | None, cwd: Path, timeout: int, echo: bool
 ) -> tuple[int | None, str]:
     """Run the agent, streaming its output to the terminal while capturing it."""
+    exe = shutil.which(argv[0]) if argv else None
+    if exe is None:  # resolves claude.cmd etc. on Windows; missing agent -> "not found"
+        return 127, f"[tack] agent not found: {argv[0] if argv else '(empty command)'}"
     proc = subprocess.Popen(
-        cmd,
-        shell=True,
+        [exe, *argv[1:]],
         cwd=cwd,
-        text=True,
+        **runtime.TEXT,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
@@ -171,9 +181,9 @@ def run_loop(
     try:
         for n in range(1, limit + 1):
             say(f"\n[tack] iteration {n}/{limit}: running agent")
-            cmd, stdin = build_command(template, prompt)
+            argv, stdin = build_command(template, prompt)
             t0 = time.monotonic()
-            code, output = run_agent(cmd, stdin, m.root, agent_timeout, echo)
+            code, output = run_agent(argv, stdin, m.root, agent_timeout, echo)
             agent_secs = round(time.monotonic() - t0, 1)
             result_text, cost = parse_agent_output(output)
             if echo and result_text is not output:
@@ -181,7 +191,7 @@ def run_loop(
             log.write(
                 "agent",
                 iteration=n,
-                command=cmd,
+                command=shlex.join(argv),
                 exit_code=code,
                 seconds=agent_secs,
                 cost_usd=cost,

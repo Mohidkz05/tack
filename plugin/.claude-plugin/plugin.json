@@ -1,0 +1,21 @@
+{
+  "name": "tack",
+  "displayName": "tack",
+  "version": "0.1.0",
+  "description": "Stack-agnostic harness: verify contract, guardrail hooks, and plan/build/review/debug/commit/ship skills for any project.",
+  "author": {
+    "name": "Mohidkz05",
+    "url": "https://github.com/Mohidkz05"
+  },
+  "homepage": "https://github.com/Mohidkz05/tack",
+  "repository": "https://github.com/Mohidkz05/tack",
+  "license": "MIT",
+  "keywords": [
+    "harness",
+    "verification",
+    "guardrails",
+    "tdd",
+    "code-review",
+    "agents-md"
+  ]
+}

@@ -130,6 +130,8 @@ def cmd_new(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return 1
+        if os.name == "nt":  # no real exec on Windows
+            return subprocess.run([agent, "/bootstrap"], cwd=root, check=False).returncode
         os.chdir(root)
         os.execv(agent, [agent, "/bootstrap"])
     print("\nNext:")
@@ -346,6 +348,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    for stream in (sys.stdout, sys.stderr):  # never crash on ✓/✗ in a legacy console
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)

@@ -1,0 +1,14 @@
+{
+  "name": "tack",
+  "description": "tack: a stack-agnostic harness for AI-assisted development.",
+  "owner": { "name": "Mohidkz05", "url": "https://github.com/Mohidkz05" },
+  "plugins": [
+    {
+      "name": "tack",
+      "source": "./plugin",
+      "description": "Verify contract, guardrail hooks, and plan/build/review/debug/commit/ship skills for any project.",
+      "category": "development",
+      "tags": ["harness", "verification", "guardrails", "workflow"]
+    }
+  ]
+}

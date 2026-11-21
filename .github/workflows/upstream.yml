@@ -1,0 +1,71 @@
+# Self-maintenance: every week, check whether Claude Code has shipped a new release.
+# With an ANTHROPIC_API_KEY secret, Claude reads the changelog, updates tack if hooks,
+# settings, skills, plugin or headless formats changed, runs the tests, and opens a PR.
+# Without the secret, it opens an issue so a human can do the review.
+name: Upstream watch
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  claude-code:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Compare with the last reviewed Claude Code version
+        id: check
+        run: |
+          latest="$(npm view @anthropic-ai/claude-code version)"
+          known="$(cat .github/upstream/claude-code-version 2>/dev/null || echo none)"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "known=$known" >> "$GITHUB_OUTPUT"
+          if [ "$latest" != "$known" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+          echo "Claude Code: last reviewed $known, latest $latest"
+
+      - uses: astral-sh/setup-uv@v6
+        if: steps.check.outputs.changed == 'true' && env.HAS_KEY == 'true'
+
+      - name: Claude reviews the release and opens a PR
+        if: steps.check.outputs.changed == 'true' && env.HAS_KEY == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Claude Code went from ${{ steps.check.outputs.known }} to ${{ steps.check.outputs.latest }}.
+            Read https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md for those versions
+            and decide whether anything affects tack: hook events or hook JSON output, settings.json
+            keys, skill or subagent frontmatter, the plugin or marketplace manifest, or the headless
+            flags tack uses (-p, --output-format json, --permission-mode, --allowedTools).
+
+            If tack needs changes: update src/tack/ (templates and runtime.py), then run
+            `uv sync`, `uv run pytest`, `uv run python scripts/build_plugin.py` and `uv run tack update .`
+            until everything passes. Either way, write ${{ steps.check.outputs.latest }} to
+            .github/upstream/claude-code-version, commit on a new branch named
+            upstream/claude-code-${{ steps.check.outputs.latest }}, push it, and open a PR with
+            `gh pr create` that explains what changed upstream and what you changed (or why nothing
+            needed changing).
+          claude_args: |
+            --allowedTools "Read,Edit,Write,Glob,Grep,WebFetch,Bash(uv:*),Bash(git:*),Bash(gh pr create:*),Bash(python3:*)"
+
+      - name: Open a review issue (no API key configured)
+        if: steps.check.outputs.changed == 'true' && env.HAS_KEY != 'true'
+        run: |
+          title="Review Claude Code ${{ steps.check.outputs.latest }} for tack compatibility"
+          if gh issue list --state open --search "$title in:title" --json number --jq 'length' | grep -q '^0$'; then
+            gh issue create --title "$title" --body "Claude Code moved from ${{ steps.check.outputs.known }} to ${{ steps.check.outputs.latest }}. Check the [changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md) for changes to hooks, settings, skills, plugins or headless flags, then bump \`.github/upstream/claude-code-version\`. Add an \`ANTHROPIC_API_KEY\` secret to let Claude do this automatically."
+          fi

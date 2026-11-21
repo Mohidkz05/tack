@@ -38,6 +38,10 @@ DEFAULT_VERIFY = ("format", "lint", "typecheck", "test")
 
 OUTPUT_TAIL = 60  # lines of output kept per failing check
 
+#: Decode subprocess output as UTF-8 everywhere (Windows defaults to a legacy code page).
+TEXT = {"text": True, "encoding": "utf-8", "errors": "replace"}
+VENDORED_PATH = ".claude/hooks/tack"
+
 #: Default agent for `tack loop`: headless Claude Code that may edit files and run the
 #: checks itself. JSON output lets tack record the result and (estimated) cost.
 DEFAULT_AGENT = (
@@ -507,9 +511,7 @@ def changed_files(root: Path) -> list[Path]:
 
     def git(*args: str) -> list[str] | None:
         try:
-            out = subprocess.run(
-                ["git", *args], cwd=root, capture_output=True, text=True, timeout=30
-            )
+            out = subprocess.run(["git", *args], cwd=root, capture_output=True, timeout=30, **TEXT)
         except (OSError, subprocess.TimeoutExpired):
             return None
         return out.stdout.splitlines() if out.returncode == 0 else None
@@ -543,7 +545,7 @@ def run_shell(cmd: str, cwd: Path, timeout: int) -> tuple[int | None, str]:
             shell=True,
             cwd=cwd,
             capture_output=True,
-            text=True,
+            **TEXT,
             timeout=timeout,
             env={**os.environ, "FORCE_COLOR": "0", "NO_COLOR": "1"},
         )
@@ -805,7 +807,7 @@ def hook_session_start(m: Manifest, _event: dict) -> int:
             cmds = ", ".join(f"{k}=`{v}`" for k, v in c.commands.items() if k in CHECKS)
             out.append(f"- {c.name} ({c.stack}, ./{c.path}): {cmds or 'none configured'}")
     out.append(
-        "Definition of done: `python3 .claude/hooks/tack verify --changed` "
+        f"Definition of done: `{self_command(m.root)} verify --changed` "
         "passes. Conventions live in AGENTS.md."
     )
     progress = m.root / PROGRESS_FILE
@@ -884,7 +886,15 @@ HOOKS = {
 }
 
 
-def run_hook(name: str, stdin: str) -> int:
+def self_command(root: Path) -> str:
+    """How an agent should invoke this runtime: the vendored copy if the project has one,
+    otherwise this file's own location (e.g. inside the Claude Code plugin)."""
+    if (root / VENDORED_PATH).is_file():
+        return f"python3 {VENDORED_PATH}"
+    return f'python3 "{Path(__file__).resolve().as_posix()}"'
+
+
+def run_hook(name: str, stdin: str, from_plugin: bool = False) -> int:
     try:
         event = json.loads(stdin) if stdin.strip() else {}
     except json.JSONDecodeError:
@@ -893,6 +903,8 @@ def run_hook(name: str, stdin: str) -> int:
     root = find_root(start)
     if root is None:
         return 0  # not a tack project: every hook is a no-op
+    if from_plugin and (root / VENDORED_PATH).is_file():
+        return 0  # the project's own vendored hooks handle it; don't run twice
     try:
         m = load_manifest(root)
     except Exception as exc:  # a broken manifest must never wedge the agent
@@ -976,6 +988,7 @@ def main(argv: list[str] | None = None) -> int:
     dp.add_argument("--json", action="store_true")
     hp = sub.add_parser("hook", help="run a Claude Code hook (event JSON on stdin)")
     hp.add_argument("name", choices=sorted(HOOKS))
+    hp.add_argument("--plugin", action="store_true", help=argparse.SUPPRESS)
     sub.add_parser("version")
     args = parser.parse_args(argv)
     if args.cmd == "verify":
@@ -983,7 +996,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "detect":
         return cmd_detect(args)
     if args.cmd == "hook":
-        return run_hook(args.name, sys.stdin.read())
+        return run_hook(args.name, sys.stdin.read(), from_plugin=args.plugin)
     print(RUNTIME_VERSION)
     return 0
 

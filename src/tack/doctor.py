@@ -46,17 +46,28 @@ def check(root: Path) -> list[Finding]:
     add = out.append
 
     # Hooks run `python3`, which may not be the interpreter running tack itself.
-    py = shutil.which("python3") or shutil.which("python")
+    # On Windows `python3` may be a Store stub that prints nothing, so probe each candidate.
     version = None
-    if py:
-        probe = subprocess.run(
-            [py, "-c", "import sys; print(*sys.version_info[:2])"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+    for name in ("python3", "python"):
+        py = shutil.which(name)
+        if not py:
+            continue
+        try:
+            probe = subprocess.run(
+                [py, "-c", "import sys; print(*sys.version_info[:2])"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+                timeout=15,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
         parts = probe.stdout.split()
-        version = tuple(int(x) for x in parts) if len(parts) == 2 else None
+        if len(parts) == 2:
+            version = (int(parts[0]), int(parts[1]))
+            break
     if version and version >= (3, 11):
         add(Finding(OK, f"python3 is {version[0]}.{version[1]} (hooks need 3.11+)"))
     else:
