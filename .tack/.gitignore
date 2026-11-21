@@ -1,0 +1,2 @@
+# tack: run logs are local; lock.json is committed so `tack update` is safe for the whole team.
+runs/

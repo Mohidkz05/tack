@@ -1,0 +1,94 @@
+# tack: build plan
+
+**One line:** the AI does the thinking. tack makes it consistent, safe, cheaper, automatic and trackable, in any language, for new and existing projects.
+
+Status: Phase 1 done (82 tests passing). Nothing is pushed to GitHub until you say so.
+
+---
+
+## How people will use it
+
+```
+tack new my-app      # start a new project from scratch
+tack init            # add tack to a project you already have
+tack verify          # run all checks (tests, lint, types, format)
+tack loop "task"     # AI works on a task until checks pass
+tack doctor          # tell you if anything is broken or out of date
+tack update          # pull in the latest rules safely
+```
+
+People can also install it inside Claude Code as a plugin.
+
+---
+
+## Phase 1: the core (build first)
+
+- [x] **1. The checks (verify).** One file, `tack.toml`, lists the check commands for the project. It works for any language: Python, JavaScript/TypeScript, Go, Rust, Java, or a mix of them in one repo.
+- [x] **2. Existing projects (`tack init`).** Looks at your files, figures out the languages, and writes `tack.toml` for you.
+- [x] **3. New projects (`tack new`).** Sets up an empty project with the rules. Claude then asks what you're building, writes `SPEC.md` (the plan), picks the tools, and uses each language's **official** setup tool (`uv init`, `create-vite`, `cargo new`, `go mod init`). No stale templates for us to maintain.
+- [x] **4. Good habits (skills).** Six short skills for Claude: `plan`, `build` (test first), `review`, `debug`, `commit`, `ship`. Plus three helper agents: `reviewer`, `test-writer`, `security-reviewer`.
+- [x] **5. Safety rules (hooks).**
+  - Block risky commands, like deleting everything or force-pushing to main.
+  - Block edits to secrets (`.env`, keys) and lockfiles.
+  - Auto-format files after each edit.
+  - Claude can't say "done" until the checks pass.
+- [x] **6. Memory.** The plan, decisions and progress live in plain files (`SPEC.md`, `PROGRESS.md`), so the next session picks up where the last one stopped.
+- [x] **7. Rules for any AI.** `AGENTS.md` works with Claude, Codex, Cursor and Gemini. `CLAUDE.md` points to it.
+
+## Phase 2: automation
+
+- [ ] **8. Work alone (`tack loop`).** Run the AI → check → send errors back → repeat, until checks pass or a limit is hit. Works with any AI command line tool, Claude by default.
+- [ ] **9. Run logs.** Every run is saved: what was done, which checks passed, time taken, and cost when the tool reports it.
+- [ ] **10. GitHub setup.** Templates that run checks on every pull request, plus an optional `@claude` bot for PR reviews.
+- [ ] **11. Safe updates (`tack update`).** Updates files you haven't changed. Files you have changed are skipped and listed, never overwritten.
+- [ ] **12. Health check (`tack doctor`).** Finds missing tools, a broken config, or out-of-date files.
+
+## Phase 3: polish and publish
+
+- [ ] **13. Tests.** For every command, run on Linux, Mac and Windows in GitHub Actions.
+- [ ] **14. Self-update job.** A weekly GitHub job checks for changes in Claude Code and the other tools, and opens a PR if something needs updating.
+- [ ] **15. Uses itself.** The tack repo runs on tack, as living proof that it works.
+- [ ] **16. README.** A clear pitch, a diagram, a 30-second demo, and a short "why not just a plain AI?" section.
+- [ ] **17. Publish.** Create the GitHub repo, push, tag v0.1.0, and add topics so people can find it. **Only after you approve.**
+
+## Later (not in v0.1)
+
+- Run many AI tasks in parallel, each in its own safe copy.
+- A shared catalog of add-on packs other people can contribute.
+- More AI tools connected directly (Codex, Gemini, Cursor).
+- A simple web page that shows run logs and costs.
+
+---
+
+## Technical choices (short)
+
+| Choice | Why |
+|---|---|
+| Written in Python, using only built-in libraries | Runs almost everywhere and adds nothing to install. The **projects** using tack can be in any language. |
+| The check script is copied into each project | Teammates and CI need nothing installed. |
+| Plain text config (`tack.toml`, Markdown) | Easy to read and edit, and it rarely breaks. |
+| MIT license | Free for anyone to use, which is good for stars. |
+
+## Folder layout
+
+```
+tack/
+├── src/tack/            # the tool itself
+│   ├── cli.py           # commands: new, init, verify, loop, doctor, update
+│   ├── runtime.py       # checks + safety rules (copied into projects)
+│   ├── detect.py        # figures out a project's languages
+│   ├── install.py       # writes and updates files safely
+│   ├── loop.py          # the "work alone" loop
+│   └── templates/       # skills, agents, hooks, AGENTS.md, GitHub files
+├── plugin/              # Claude Code plugin version
+├── tests/
+├── docs/
+└── .github/workflows/   # tests, self-update job, release
+```
+
+## Done means
+
+- `tack new` and `tack init` both work on a fresh machine.
+- `tack verify` passes on its own repo.
+- All tests pass on Linux, Mac and Windows.
+- The README makes the point in under 30 seconds.

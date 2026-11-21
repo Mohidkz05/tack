@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tack-harness"
+version = "0.1.0"
+description = "A stack-agnostic harness for AI-assisted development: standard skills, guardrails, verification and automation for Claude Code (and any AGENTS.md-aware agent)."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "Mohidkz05" }]
+keywords = ["ai", "agents", "claude-code", "harness", "developer-tools", "automation", "agents-md"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = []  # stdlib only, on purpose
+
+[project.urls]
+Homepage = "https://github.com/Mohidkz05/tack"
+Issues = "https://github.com/Mohidkz05/tack/issues"
+
+[project.scripts]
+tack = "tack.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tack"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

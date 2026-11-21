@@ -1,0 +1,37 @@
+# {{name}}
+
+<!-- Describe the project in 2-3 lines here. tack only edits inside the tack block below. -->
+
+<!-- tack:begin (managed by tack; edit outside this block, refresh with `tack update`) -->
+## How we work
+
+These rules apply to every coding agent (Claude Code, Codex, Cursor, Gemini, ...) and every human.
+
+1. **Get your bearings.** Read `SPEC.md` (what we are building and why) and `PROGRESS.md` (where we left off).
+2. **Plan anything non-trivial.** Write a short plan with the files to touch, the approach, and how you will prove it works. Get it approved before large changes.
+3. **Test first.** Write or update a failing test, make it pass, then clean up.
+4. **Verify.** Run `python3 .claude/hooks/tack_runtime.py verify --changed`. Work is not done until it passes. Show the output; don't just claim success.
+5. **Review your diff** as if someone else wrote it: correctness, edge cases, naming, dead code, secrets.
+6. **Record.** Update `PROGRESS.md`: what changed, decisions made and why, and what's next.
+7. **Commit** small, focused changes with Conventional Commit messages (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`).
+
+## Checks
+
+The commands for each check live in `tack.toml`, one entry per component (each language or package in the repo).
+Run them all with `python3 .claude/hooks/tack_runtime.py verify`, or pick some with `--only lint,test` and `--component <name>`.
+If a check is missing or wrong, fix `tack.toml`. Don't skip the check.
+
+## Rules
+
+- Never weaken a check to make it pass: no deleting tests, no `skip`, no broad lint ignores, no `any` or `# type: ignore` without a written reason.
+- Never edit lockfiles by hand. Use the package manager.
+- Never read, print, or commit secrets (`.env`, keys, tokens). Use `.env.example` for documentation.
+- Add a dependency only when it clearly earns its place, and say why in the commit message.
+- Keep changes small and in scope. Match the existing style before introducing a new one.
+- When unsure about intent, ask. When unsure about code, read it or run it.
+
+## Memory
+
+- `SPEC.md`: the goal, users, scope, and non-goals. Update it when the scope changes.
+- `PROGRESS.md`: current status, decisions (with reasons), and next steps. Update it before you stop.
+<!-- tack:end -->

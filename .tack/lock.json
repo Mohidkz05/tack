@@ -1,0 +1,18 @@
+{
+  "files": {
+    ".claude/agents/reviewer.md": "fba888b8635befb7f0fe95e489224eab6d2d39de9c55dca53799d6eed6ad64af",
+    ".claude/agents/security-reviewer.md": "ce612eb6c512dcc409e6b9dac8615e145f65226b667fe13f2aff11dab8a3a3e8",
+    ".claude/agents/test-writer.md": "b0622d8955041739ebb389e9d2ecb45e0c45a288009f5b33dfc494fbf2ebad99",
+    ".claude/hooks/tack_runtime.py": "ad8eff7e18fcf4675c994e4ea7dc6f2f1e85d3180b82843923de5a5fa6648dcb",
+    ".claude/skills/bootstrap/SKILL.md": "d2b37646422b0d0d19cedaef24ca65aefa8a5b14f4bbbca6798fdcc77de7b1ff",
+    ".claude/skills/build/SKILL.md": "88f7f73f6d170736b5d88bdaddbd4f12c16ca22abf42ae5fd8c68b3196a5cbd4",
+    ".claude/skills/commit/SKILL.md": "193751599dd039b0575cf0f355241e2b90cc8d441aa463a24b8c7542fc4b34b7",
+    ".claude/skills/debug/SKILL.md": "400cee594ef0e82bcfff27a182b41a9ea81b47b0a23e754c6e029c1d8562bd79",
+    ".claude/skills/plan/SKILL.md": "f121bcf788dec0d65a86f2c0280de03dcd4fa1ad932239f274b494143e998fcd",
+    ".claude/skills/review/SKILL.md": "189187d70cb37c39a45e4edde64637f9c7a2f3b3770600a0bb496638d54b1bf9",
+    ".claude/skills/ship/SKILL.md": "3bfd89c4f2d32da96024bba23399229e45502713bb9ecf8b555da3f348d79851",
+    ".tack/.gitignore": "6514da7ab7948811bb7304860d3081024a88554e420cddc182069ba83bd5be14",
+    "CLAUDE.md": "2c661cb966051ec8b2f352443c88ec1a9b0fb2c17341fd5e2ec37649e9df77db"
+  },
+  "version": "0.1.0"
+}

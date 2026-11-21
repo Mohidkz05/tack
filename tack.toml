@@ -1,0 +1,34 @@
+# tack.toml: the project's verification contract.
+# Every check (format, lint, typecheck, test...) maps to a real command per component.
+# Hooks, agents and CI all run `python3 .claude/hooks/tack_runtime.py verify`.
+# Docs: https://github.com/Mohidkz05/tack/blob/main/docs/manifest.md
+
+[project]
+name = "tack"
+status = "active"
+
+[hooks]
+format_on_edit = true
+on_stop = ["lint", "typecheck"]
+timeout = 300
+
+[guard]
+protected = []
+deny_patterns = []
+
+[agent]
+command = "claude -p {prompt} --permission-mode acceptEdits"
+max_iters = 5
+
+[[components]]
+name = "tack"
+path = "."
+stack = "python"
+[components.commands]
+setup = "uv sync"
+format = "uv run ruff format ."
+format_check = "uv run ruff format --check ."
+format_file = "uv run ruff format -q {file}"
+format_globs = "*.py,*.pyi"
+lint = "uv run ruff check ."
+test = "uv run pytest -q"
