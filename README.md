@@ -22,15 +22,16 @@ Most agent setups *tell* the AI how to behave. tack **checks** that it did.
 $ tack loop "make the failing tests in tests/test_textutils.py pass"
 
 [tack] iteration 1/3: running agent
-  │ The bug: slugify only lowercased the text and turned each space into a hyphen...
-  │ The fix: keep only runs of letters and digits, joined by single hyphens.
+  │ **The bug:** `slugify` in `textutils.py` only lowercased the text and turned each space into a hyphen.
+  │ **The fix:** it now lowercases the text, keeps only the runs of letters and digits,
+  │ and joins them with single hyphens.
 [tack] iteration 1/3: verifying
   PASS     0.0s  demo:format  uv run ruff format --check .
-  PASS     0.0s  demo:lint    uv run ruff check .
-  PASS     0.2s  demo:test    uv run pytest -q
+  PASS     0.0s  demo:lint  uv run ruff check .
+  PASS     0.2s  demo:test  uv run pytest -q
 
 [tack] loop PASSED: 1 iteration(s), 40s
-[tack] log: .tack/runs/20261121T054631Z-make-the-failing-tests-pass.jsonl
+[tack] log: .tack/runs/20261121T054631Z-make-the-failing-tests-in-tests-test-tex.jsonl
 ```
 
 *A real run with Claude Code on a project with a buggy function. If a check had failed, tack would have fed the failure output back and tried again.*
